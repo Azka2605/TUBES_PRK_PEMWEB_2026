@@ -1,0 +1,44 @@
+<?php
+// app/Config/Database.php
+// Tugas: Koneksi PDO ke database MySQL + helper kirim response JSON.
+// Diisi oleh: anggota yang mengerjakan konfigurasi database.
+
+namespace App\Config;
+
+class Database
+{
+    private $host = "localhost";
+    private $db_name = "kebunku";
+    private $username = "root";
+    private $password = "";
+    private $conn = null;
+
+    // TODO: Sesuaikan kredensial database dengan environment masing-masing anggota.
+
+    public function getConnection()
+    {
+        $this->conn = null;
+
+        try {
+            $this->conn = new PDO(
+                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
+                $this->username,
+                $this->password
+            );
+            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        } catch (PDOException $exception) {
+            echo "Connection error: " . $exception->getMessage();
+        }
+
+        return $this->conn;
+    }
+
+    // TODO: Helper static untuk response JSON agar konsisten di semua controller.
+    public static function response($data, $status = 200)
+    {
+        http_response_code($status);
+        header("Content-Type: application/json; charset=UTF-8");
+        echo json_encode($data);
+        exit;
+    }
+}
