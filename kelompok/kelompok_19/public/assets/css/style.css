@@ -1,0 +1,17 @@
+/* public/assets/css/style.css */
+/* Kustomisasi gaya mendampingi Bootstrap 5 */
+
+body {
+    background-color: #f8f9fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+#sidebar-wrapper {
+    min-height: 100vh;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+/* TODO: Tambahkan styling kustom tim di sini */
