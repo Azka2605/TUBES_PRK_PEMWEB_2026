@@ -5,4 +5,4 @@
 - Revalina Wanda Sari
 - Ghea Putri Nashirah
 - Rizky Novrizal (2415061021)
-- Davi Tholiatul Jaisy
+- Davi Tholiatul Jaisy (2415061048)
