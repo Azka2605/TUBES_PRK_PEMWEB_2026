@@ -1,0 +1,58 @@
+<?php
+// Pastikan session aktif di setiap halaman
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Log Ternak - Kelompok 04</title>
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+
+<!-- Navbar Utama -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
+  <div class="container">
+    <a class="navbar-brand fw-bold" href="#">
+      <i class="bi bi-box-seam me-2"></i>Log Ternak K04
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="#"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="bi bi-people me-1"></i> User</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="bi bi-house-door me-1"></i> Kandang & Ternak</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="bi bi-heart-pulse me-1"></i> Kesehatan</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="bi bi-basket me-1"></i> Pakan</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#"><i class="bi bi-file-earmark-text me-1"></i> Laporan</a>
+        </li>
+        <li class="nav-item ms-lg-2">
+          <a class="btn btn-outline-light btn-sm mt-1" href="#"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Container Pembungkus Konten Utama -->
+<div class="container my-4">
