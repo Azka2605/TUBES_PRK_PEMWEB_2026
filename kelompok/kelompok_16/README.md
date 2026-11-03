@@ -1,8 +1,8 @@
 # Forum Diskusi Online Bantuan Hukum (RUMDIS)
 
-## Anggota Kelompok
-- I Made Dipa Rama Artike
+## Anggota Kelompok 16
+- I Made Dipa Rama Artike (2415061001)
 - Revalina Wanda Sari
 - Ghea Putri Nashirah
-- Rizky Novrizal
+- Rizky Novrizal (2415061021)
 - Davi Tholiatul Jaisy
