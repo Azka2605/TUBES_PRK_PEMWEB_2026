@@ -49,10 +49,22 @@ $current_uri = $_SERVER['REQUEST_URI'];
             <i class="bi bi-box-seam me-1"></i> Ternak
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <?= (strpos($current_uri, '/modul/kesehatan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/kesehatan/index.php">
+                <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle <?= (strpos($current_uri, '/modul/kesehatan/') !== false || strpos($current_uri, '/modul/bobot/') !== false) ? 'active' : ''; ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-heart-pulse me-1"></i> Kesehatan
           </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item <?= (strpos($current_uri, '/modul/kesehatan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/kesehatan/index.php">
+                <i class="bi bi-clipboard2-pulse me-2"></i>Rekam Medis
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item <?= (strpos($current_uri, '/modul/bobot/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/bobot/index.php">
+                <i class="bi bi-speedometer me-2"></i>Bobot
+              </a>
+            </li>
+          </ul>
         </li>
         <li class="nav-item">
           <a class="nav-link <?= (strpos($current_uri, '/modul/pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/pakan/index.php">
