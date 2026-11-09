@@ -3,6 +3,7 @@
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+$current_uri = $_SERVER['REQUEST_URI'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -20,7 +21,7 @@ if (session_status() == PHP_SESSION_NONE) {
 <!-- Navbar Utama -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
   <div class="container">
-    <a class="navbar-brand fw-bold" href="#">
+    <a class="navbar-brand fw-bold" href="<?= $base_url; ?>/index.php">
       <i class="bi bi-box-seam me-2"></i>Log Ternak K04
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -29,28 +30,44 @@ if (session_status() == PHP_SESSION_NONE) {
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
-          <a class="nav-link active" href="<?= $base_url; ?>/index.php"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/') === false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/index.php">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/user/index.php"><i class="bi bi-people me-1"></i> User</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/user/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/user/index.php">
+            <i class="bi bi-people me-1"></i> User
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/kandang/index.php"><i class="bi bi-house-door me-1"></i> Kandang </a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/kandang/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/kandang/index.php">
+            <i class="bi bi-house-door me-1"></i> Kandang
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/ternak/index.php"><i class="bi bi-box-seam me-1"></i> Ternak</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/ternak/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/ternak/index.php">
+            <i class="bi bi-box-seam me-1"></i> Ternak
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/kesehatan/index.php"><i class="bi bi-heart-pulse me-1"></i> Kesehatan</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/kesehatan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/kesehatan/index.php">
+            <i class="bi bi-heart-pulse me-1"></i> Kesehatan
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/pakan/index.php"><i class="bi bi-basket me-1"></i> Pakan</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/pakan/index.php">
+            <i class="bi bi-basket me-1"></i> Pakan
+          </a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="<?= $base_url; ?>/modul/laporan/index.php"><i class="bi bi-file-earmark-text me-1"></i> Laporan</a>
+          <a class="nav-link <?= (strpos($current_uri, '/modul/laporan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/laporan/index.php">
+            <i class="bi bi-file-earmark-text me-1"></i> Laporan
+          </a>
         </li>
         <li class="nav-item ms-lg-2">
-          <a class="btn btn-outline-light btn-sm mt-1" href="#"><i class="bi bi-box-arrow-right"></i> Logout</a>
+          <a class="btn btn-outline-light btn-sm mt-1" href="<?= $base_url; ?>/logout.php">
+            <i class="bi bi-box-arrow-right me-1"></i> Logout
+          </a>
         </li>
       </ul>
     </div>
