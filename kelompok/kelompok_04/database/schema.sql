@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `ternak` (
   `jenis_kelamin` ENUM('Jantan', 'Betina') NOT NULL,
   `tgl_lahir` DATE,
   `foto` VARCHAR(255) DEFAULT 'default.jpg',
-  `status` ENUM('Sehat', 'Sakit', 'Karantina') NOT NULL DEFAULT 'Sehat',
+  `status_kesehatan` ENUM('Sehat', 'Sakit', 'Karantina') NOT NULL DEFAULT 'Sehat',
   `id_kandang` INT,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`id_kandang`) REFERENCES `kandang`(`id_kandang`) ON DELETE SET NULL ON UPDATE CASCADE

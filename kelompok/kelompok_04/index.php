@@ -4,11 +4,11 @@ include 'views/header.php';
 
 // Statistik dashboard
 $total_ternak  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak"))['jml'];
-$ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status = 'Sakit'"))['jml'];
+$ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status_kesehatan = 'Sakit'"))['jml'];
 $ringkasan_ternak = mysqli_fetch_assoc(mysqli_query(
     $koneksi,
     "SELECT
-        (SELECT COUNT(*) FROM ternak WHERE status = 'Karantina') AS ternak_karantina,
+        (SELECT COUNT(*) FROM ternak WHERE status_kesehatan = 'Karantina') AS ternak_karantina,
         (SELECT AVG(rb.bobot_kg)
          FROM riwayat_bobot rb
          WHERE NOT EXISTS (
@@ -25,9 +25,9 @@ $total_kandang = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS j
 $stok_menipis  = mysqli_query($koneksi, "SELECT nama_pakan, stok_kg FROM pakan WHERE stok_kg < 10 ORDER BY stok_kg ASC");
 $jml_menipis   = mysqli_num_rows($stok_menipis);
 $distribusi_status = ['Sehat' => 0, 'Sakit' => 0, 'Karantina' => 0];
-$hasil_status = mysqli_query($koneksi, "SELECT status, COUNT(*) AS jumlah FROM ternak GROUP BY status");
+$hasil_status = mysqli_query($koneksi, "SELECT status_kesehatan, COUNT(*) AS jumlah FROM ternak GROUP BY status_kesehatan");
 while ($status = mysqli_fetch_assoc($hasil_status)) {
-    $distribusi_status[$status['status']] = (int) $status['jumlah'];
+    $distribusi_status[$status['status_kesehatan']] = (int) $status['jumlah'];
 }
 $ternak_per_kandang = mysqli_query(
     $koneksi,
