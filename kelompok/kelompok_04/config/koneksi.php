@@ -10,5 +10,14 @@ if (!$koneksi) {
     die("Koneksi Database Gagal: " . mysqli_connect_error());
 }
 
-$base_url = "http://localhost/TUBES%20PEMWEB/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04";
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https://" : "http://";
+$domain   = $_SERVER['HTTP_HOST'];
+
+
+$doc_root    = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+$dir_koneksi = str_replace('\\', '/', __DIR__);
+$rel_path    = str_replace($doc_root, '', $dir_koneksi);
+$base_path   = str_replace('/config', '', $rel_path);
+
+$base_url = $protocol . $domain . $base_path;
 ?>
