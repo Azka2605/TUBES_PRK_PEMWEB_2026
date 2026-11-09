@@ -88,6 +88,7 @@ $kandang_list = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY nama_kand
                         <td><?= $row['jenis_kelamin'] == 'Jantan' ? '♂ Jantan' : '♀ Betina'; ?></td>
                         <td><span class="badge <?= $badge_status; ?>"><?= $row['status_kesehatan']; ?></span></td>
                         <td class="text-center">
+                            <a href="<?= $base_url; ?>/modul/kesehatan/riwayat.php?id_ternak=<?= (int)$row['id_ternak']; ?>" class="btn btn-info btn-sm me-1"><i class="bi bi-eye"></i> Detail</a>
                             <a href="edit.php?id=<?= $row['id_ternak']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
                             <a href="hapus.php?id=<?= $row['id_ternak']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus ternak ini?')"><i class="bi bi-trash"></i> Hapus</a>
                         </td>
