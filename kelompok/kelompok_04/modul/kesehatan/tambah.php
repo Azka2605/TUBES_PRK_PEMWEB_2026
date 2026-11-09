@@ -9,7 +9,7 @@ $ternak_query = mysqli_query($koneksi, "SELECT id_ternak, tag_number, jenis_ras,
 $dokter_query = mysqli_query($koneksi, "SELECT id_user, nama_lengkap FROM users WHERE role = 'dokter' ORDER BY nama_lengkap ASC");
 
 // Nilai form (diisi ulang jika ada error)
-$id_ternak        = (int)($_POST['id_ternak'] ?? 0);
+$id_ternak        = (int)($_POST['id_ternak'] ?? ($_GET['id_ternak'] ?? 0));
 $id_dokter        = (int)($_POST['id_dokter'] ?? 0);
 $tgl_periksa      = $_POST['tgl_periksa'] ?? date('Y-m-d');
 $diagnosa         = trim($_POST['diagnosa'] ?? '');
@@ -168,12 +168,19 @@ if (isset($_POST['simpan'])) {
 
 <script>
 // Saat ternak dipilih, status otomatis terisi dengan status ternak saat ini (bisa diubah dokter)
-document.getElementById('id_ternak').addEventListener('change', function () {
-    var status = this.options[this.selectedIndex].getAttribute('data-status');
+function isiStatusTernak() {
+    var sel = document.getElementById('id_ternak');
+    var status = sel.options[sel.selectedIndex].getAttribute('data-status');
     if (status) {
         document.getElementById('status_kesehatan').value = status;
     }
-});
+}
+document.getElementById('id_ternak').addEventListener('change', isiStatusTernak);
+
+// Jika ternak sudah terpilih dari alamat (?id_ternak=...) dan status belum diisi, isi otomatis
+if (document.getElementById('id_ternak').value && !document.getElementById('status_kesehatan').value) {
+    isiStatusTernak();
+}
 </script>
 
 <?php include '../../views/footer.php'; ?>
