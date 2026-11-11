@@ -21,6 +21,8 @@ if (session_status() === PHP_SESSION_NONE) {
 // ==========================================
 require_once __DIR__ . '/config/koneksi.php';
 
+
+
 // Pastikan koneksi tersedia
 if (!isset($koneksi) || !($koneksi instanceof mysqli)) {
     die("Koneksi database tidak tersedia. Periksa config/koneksi.php");
@@ -143,6 +145,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         }
     }
+}
+$pesan_logout = '';
+
+if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
+    $pesan_logout = 'Anda berhasil logout. Silakan login kembali.';
 }
 ?>
 
