@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS `log_pemberian_pakan` (
 
 -- Data Awal (Dummy User untuk Login Test)
 -- Password default: 'password123' (sudah di-hash password_hash PHP)
-INSERT INTO `users` (`username`, `password`, `nama_lengkap`, `role`) VALUES
-('admin', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHeFXd2zIhkj1xTnpW1qH0n9K1i3dK9a4W', 'Administrator', 'admin'),
-('peternak1', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHeFXd2zIhkj1xTnpW1qH0n9K1i3dK9a4W', 'Budi Peternak', 'peternak'),
-('dokter1', '$2y$10$e0MYzXyjpJS7Pd0RVvHwHeFXd2zIhkj1xTnpW1qH0n9K1i3dK9a4W', 'drh. Siti Rahma', 'dokter');
+INSERT INTO users (username, password, nama_lengkap, role) 
+VALUES ('admin', SHA2('password123', 256), 'Administrator', 'admin'),
+('peternak1', SHA2('password123',256), 'Peternak 1', 'peternak'),
+('dokter1', SHA2('password123', 256), 'Dokter 1', 'dokter');
