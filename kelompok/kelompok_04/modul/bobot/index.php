@@ -2,27 +2,63 @@
 include '../../config/koneksi.php';
 include '../../views/header.php';
 
-// Filter berdasarkan ternak
-$filter_ternak = isset($_GET['id_ternak']) ? (int)$_GET['id_ternak'] : 0;
+// Filter berdasarkan jenis ternak dan pencarian kode ternak
+$filter_jenis = isset($_GET['jenis_ternak']) && is_string($_GET['jenis_ternak'])
+    ? $_GET['jenis_ternak']
+    : 'semua';
+$kode_ternak = isset($_GET['kode_ternak']) && is_string($_GET['kode_ternak'])
+    ? trim($_GET['kode_ternak'])
+    : '';
+$jenis_ternak_valid = [
+    'sapi' => 'Sapi%',
+    'kambing' => 'Kambing%',
+    'ayam' => 'Ayam Petelur%'
+];
+if ($filter_jenis !== 'semua' && !isset($jenis_ternak_valid[$filter_jenis])) {
+    $filter_jenis = 'semua';
+}
+$label_jenis_ternak = [
+    'semua' => 'Semua Ternak',
+    'sapi' => 'Sapi',
+    'kambing' => 'Kambing',
+    'ayam' => 'Ayam Petelur'
+];
 
 $sql = "SELECT rb.id_bobot, rb.tgl_timbang, rb.bobot_kg, rb.catatan,
                t.tag_number, t.jenis_ras
         FROM riwayat_bobot rb
         JOIN ternak t ON rb.id_ternak = t.id_ternak";
-if ($filter_ternak > 0) {
-    $sql .= " WHERE rb.id_ternak = ?";
+$where = [];
+$types = '';
+if ($filter_jenis !== 'semua') {
+    $where[] = "t.jenis_ras LIKE ?";
+    $types .= 's';
+}
+if ($kode_ternak !== '') {
+    $where[] = "t.tag_number LIKE ?";
+    $types .= 's';
+    $kode_ternak_filter = '%' . $kode_ternak . '%';
+}
+if ($where) {
+    $sql .= " WHERE " . implode(' AND ', $where);
 }
 $sql .= " ORDER BY rb.tgl_timbang DESC, rb.id_bobot DESC";
 
 $stmt = mysqli_prepare($koneksi, $sql);
-if ($filter_ternak > 0) {
-    mysqli_stmt_bind_param($stmt, "i", $filter_ternak);
+if ($types === 's') {
+    if ($filter_jenis !== 'semua') {
+        $jenis_ras_filter = $jenis_ternak_valid[$filter_jenis];
+        mysqli_stmt_bind_param($stmt, 's', $jenis_ras_filter);
+    } else {
+        mysqli_stmt_bind_param($stmt, 's', $kode_ternak_filter);
+    }
+} elseif ($types === 'ss') {
+    $jenis_ras_filter = $jenis_ternak_valid[$filter_jenis];
+    mysqli_stmt_bind_param($stmt, 'ss', $jenis_ras_filter, $kode_ternak_filter);
 }
 mysqli_stmt_execute($stmt);
 $query = mysqli_stmt_get_result($stmt);
 
-// Ambil list ternak untuk dropdown filter
-$ternak_list = mysqli_query($koneksi, "SELECT id_ternak, tag_number FROM ternak ORDER BY tag_number ASC");
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -40,28 +76,50 @@ $ternak_list = mysqli_query($koneksi, "SELECT id_ternak, tag_number FROM ternak 
     <?php endif; ?>
 <?php endif; ?>
 
+<style>
+    .bobot-filter-input:focus {
+        border-color: #86b7a0;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+    }
+</style>
+
 <!-- Filter Ternak -->
 <div class="card mb-4 shadow-sm">
     <div class="card-body">
-        <form method="GET" action="" class="row g-3 align-items-center">
-            <div class="col-auto">
-                <label class="col-form-label fw-bold">Filter Ternak:</label>
+        <div class="nav nav-pills flex-wrap gap-2 mb-3" aria-label="Filter bobot berdasarkan jenis ternak">
+            <?php foreach ($label_jenis_ternak as $jenis => $label): ?>
+                <a href="index.php?jenis_ternak=<?= urlencode($jenis); ?>"
+                   class="nav-link <?= $filter_jenis === $jenis ? 'active bg-success text-white' : 'text-success'; ?>"
+                   <?= $filter_jenis === $jenis ? 'aria-current="page"' : ''; ?>>
+                    <?php if ($jenis === 'ayam'): ?>
+                        <i class="bi bi-egg me-1" aria-hidden="true"></i>
+                    <?php elseif ($jenis === 'semua'): ?>
+                        <i class="bi bi-grid me-1" aria-hidden="true"></i>
+                    <?php else: ?>
+                        <i class="bi bi-speedometer me-1" aria-hidden="true"></i>
+                    <?php endif; ?>
+                    <?= htmlspecialchars($label); ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+        <form method="GET" action="" class="row g-3 align-items-end">
+            <input type="hidden" name="jenis_ternak" value="<?= htmlspecialchars($filter_jenis); ?>">
+            <div class="col-12 col-md-6 col-lg-4">
+                <label for="kode_ternak" class="form-label fw-bold">Cari Kode Ternak</label>
+                <input type="search" id="kode_ternak" name="kode_ternak"
+                       class="form-control bobot-filter-input" value="<?= htmlspecialchars($kode_ternak); ?>"
+                       placeholder="Contoh: AY-001">
             </div>
-            <div class="col-auto">
-                <select name="id_ternak" class="form-select" onchange="this.form.submit()">
-                    <option value="0">-- Semua Ternak --</option>
-                    <?php while ($t = mysqli_fetch_assoc($ternak_list)): ?>
-                        <option value="<?= (int)$t['id_ternak']; ?>" <?= $filter_ternak == $t['id_ternak'] ? 'selected' : ''; ?>>
-                            <?= htmlspecialchars($t['tag_number']); ?>
-                        </option>
-                    <?php endwhile; ?>
-                </select>
+            <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-search me-1"></i>Cari
+                </button>
+                <?php if ($kode_ternak !== ''): ?>
+                    <a href="index.php?jenis_ternak=<?= urlencode($filter_jenis); ?>" class="btn btn-outline-success">
+                        Reset
+                    </a>
+                <?php endif; ?>
             </div>
-            <?php if ($filter_ternak > 0): ?>
-                <div class="col-auto">
-                    <a href="index.php" class="btn btn-outline-secondary btn-sm">Reset Filter</a>
-                </div>
-            <?php endif; ?>
         </form>
     </div>
 </div>
@@ -104,7 +162,13 @@ $ternak_list = mysqli_query($koneksi, "SELECT id_ternak, tag_number FROM ternak 
                     else:
                     ?>
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">Belum ada data penimbangan. Klik tombol tambah di atas.</td>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <?php if ($kode_ternak !== ''): ?>
+                                Tidak ditemukan data bobot dengan kode "<?= htmlspecialchars($kode_ternak); ?>" pada filter <?= htmlspecialchars($label_jenis_ternak[$filter_jenis]); ?>.
+                            <?php else: ?>
+                                Belum ada data penimbangan untuk <?= htmlspecialchars($label_jenis_ternak[$filter_jenis]); ?>. Klik tombol tambah di atas.
+                            <?php endif; ?>
+                        </td>
                     </tr>
                     <?php endif; ?>
                 </tbody>
