@@ -1,5 +1,9 @@
 # Kelompok 04
-1. Hafidz Azka Rikzi    2415061051
+1. Hafidz Azka Rikzi                      2415061051
+2. Angga Saputra                          2415061071
+3. M. Darunnadwah Al-Qushai Sutrawhana    2455061005
+4. Annisa Khairina                        2415061103
+5. Yunia Cantika Sari                     2155061017
 
 
 # Sistem Log Data Kesehatan & Pakan Ternak — Kelompok 04
