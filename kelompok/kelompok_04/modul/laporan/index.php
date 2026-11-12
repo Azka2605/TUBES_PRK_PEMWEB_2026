@@ -8,16 +8,42 @@ $sampai = $_GET['sampai'] ?? date('Y-m-t');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $dari))   $dari   = date('Y-m-01');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $sampai)) $sampai = date('Y-m-t');
 
+$filter_jenis = isset($_GET['jenis_ternak']) && is_string($_GET['jenis_ternak'])
+    ? $_GET['jenis_ternak']
+    : 'semua';
+$jenis_ternak_valid = [
+    'sapi' => 'Sapi%',
+    'kambing' => 'Kambing%',
+    'ayam' => 'Ayam Petelur%'
+];
+if ($filter_jenis !== 'semua' && !isset($jenis_ternak_valid[$filter_jenis])) {
+    $filter_jenis = 'semua';
+}
+$label_jenis_ternak = [
+    'semua' => 'Semua Ternak',
+    'sapi' => 'Sapi',
+    'kambing' => 'Kambing',
+    'ayam' => 'Ayam Petelur'
+];
+
 // --- Rekap rekam medis ---
 $sql_medis = "SELECT lk.tgl_periksa, t.tag_number, t.jenis_ras, lk.diagnosa,
                      lk.tindakan_medis, lk.obat_vaksin, u.nama_lengkap AS dokter
               FROM log_kesehatan lk
               JOIN ternak t ON t.id_ternak = lk.id_ternak
               LEFT JOIN users u ON u.id_user = lk.id_dokter
-              WHERE lk.tgl_periksa BETWEEN ? AND ?
-              ORDER BY lk.tgl_periksa DESC";
+              WHERE lk.tgl_periksa BETWEEN ? AND ?";
+if ($filter_jenis !== 'semua') {
+    $sql_medis .= " AND t.jenis_ras LIKE ?";
+}
+$sql_medis .= " ORDER BY lk.tgl_periksa DESC";
 $stmt = mysqli_prepare($koneksi, $sql_medis);
-mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+if ($filter_jenis === 'semua') {
+    mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+} else {
+    $jenis_ras_filter = $jenis_ternak_valid[$filter_jenis];
+    mysqli_stmt_bind_param($stmt, 'sss', $dari, $sampai, $jenis_ras_filter);
+}
 mysqli_stmt_execute($stmt);
 $medis = mysqli_stmt_get_result($stmt);
 
@@ -28,10 +54,20 @@ $sql_pakan = "SELECT DATE(lp.tgl_pemberian) AS tgl, p.nama_pakan, k.nama_kandang
               JOIN pakan p ON p.id_pakan = lp.id_pakan
               JOIN kandang k ON k.id_kandang = lp.id_kandang
               LEFT JOIN users u ON u.id_user = lp.id_peternak
-              WHERE DATE(lp.tgl_pemberian) BETWEEN ? AND ?
-              ORDER BY lp.tgl_pemberian DESC";
+              WHERE DATE(lp.tgl_pemberian) BETWEEN ? AND ?";
+if ($filter_jenis !== 'semua') {
+    $sql_pakan .= " AND EXISTS (
+                        SELECT 1 FROM ternak t
+                        WHERE t.id_kandang = k.id_kandang AND t.jenis_ras LIKE ?
+                    )";
+}
+$sql_pakan .= " ORDER BY lp.tgl_pemberian DESC";
 $stmt = mysqli_prepare($koneksi, $sql_pakan);
-mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+if ($filter_jenis === 'semua') {
+    mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+} else {
+    mysqli_stmt_bind_param($stmt, 'sss', $dari, $sampai, $jenis_ras_filter);
+}
 mysqli_stmt_execute($stmt);
 $pakan = mysqli_stmt_get_result($stmt);
 
@@ -40,11 +76,22 @@ $sql_rekap_jenis = "SELECT p.nama_pakan, p.jenis_pakan, COUNT(*) AS jml_pemberia
                            SUM(lp.jumlah_kg) AS total_kg
                     FROM log_pemberian_pakan lp
                     JOIN pakan p ON p.id_pakan = lp.id_pakan
-                    WHERE DATE(lp.tgl_pemberian) BETWEEN ? AND ?
-                    GROUP BY p.id_pakan, p.nama_pakan, p.jenis_pakan
-                    ORDER BY total_kg DESC";
+                    JOIN kandang k ON k.id_kandang = lp.id_kandang
+                    WHERE DATE(lp.tgl_pemberian) BETWEEN ? AND ?";
+if ($filter_jenis !== 'semua') {
+    $sql_rekap_jenis .= " AND EXISTS (
+                              SELECT 1 FROM ternak t
+                              WHERE t.id_kandang = k.id_kandang AND t.jenis_ras LIKE ?
+                          )";
+}
+$sql_rekap_jenis .= " GROUP BY p.id_pakan, p.nama_pakan, p.jenis_pakan
+                      ORDER BY total_kg DESC";
 $stmt = mysqli_prepare($koneksi, $sql_rekap_jenis);
-mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+if ($filter_jenis === 'semua') {
+    mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+} else {
+    mysqli_stmt_bind_param($stmt, 'sss', $dari, $sampai, $jenis_ras_filter);
+}
 mysqli_stmt_execute($stmt);
 $rekap_jenis = mysqli_stmt_get_result($stmt);
 
@@ -115,6 +162,11 @@ date_default_timezone_set($zona_waktu_sebelumnya);
 
 .report-page .report-table-card .table {
     margin-bottom: 0;
+}
+
+.report-page .report-filter-control:focus {
+    border-color: #86b7a0;
+    box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
 }
 
 @page {
@@ -301,6 +353,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
     <div class="print-report-header d-none d-print-block">
         <h1 class="h5 fw-bold">Sistem Log Data Kesehatan &amp; Pakan Ternak - Kelompok 04</h1>
         <h2 class="h6 fw-bold">Rekapitulasi Laporan</h2>
+        <p>Jenis ternak: <?= htmlspecialchars($label_jenis_ternak[$filter_jenis]) ?></p>
         <p>Periode: <?= date('d/m/Y', strtotime($dari)) ?> s/d <?= date('d/m/Y', strtotime($sampai)) ?></p>
         <p>Tanggal cetak: <?= $tanggal_cetak ?> WIB</p>
     </div>
@@ -311,17 +364,27 @@ date_default_timezone_set($zona_waktu_sebelumnya);
 
     <div class="card report-table-card mb-4 no-print">
         <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Periode Laporan</h5>
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Laporan</h5>
         </div>
         <div class="card-body">
             <form method="get" class="row g-3 align-items-end">
                 <div class="col-12 col-sm-6 col-lg-3">
+                    <label for="jenis_ternak" class="form-label">Jenis Ternak</label>
+                    <select id="jenis_ternak" name="jenis_ternak" class="form-select report-filter-control">
+                        <?php foreach ($label_jenis_ternak as $jenis => $label): ?>
+                            <option value="<?= htmlspecialchars($jenis) ?>" <?= $filter_jenis === $jenis ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($label) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-3">
                     <label for="dari" class="form-label">Dari</label>
-                    <input id="dari" type="date" name="dari" value="<?= htmlspecialchars($dari) ?>" class="form-control">
+                    <input id="dari" type="date" name="dari" value="<?= htmlspecialchars($dari) ?>" class="form-control report-filter-control">
                 </div>
                 <div class="col-12 col-sm-6 col-lg-3">
                     <label for="sampai" class="form-label">Sampai</label>
-                    <input id="sampai" type="date" name="sampai" value="<?= htmlspecialchars($sampai) ?>" class="form-control">
+                    <input id="sampai" type="date" name="sampai" value="<?= htmlspecialchars($sampai) ?>" class="form-control report-filter-control">
                 </div>
                 <div class="col-12 col-lg-auto d-flex flex-column flex-sm-row gap-2">
                     <button type="submit" class="btn btn-success">

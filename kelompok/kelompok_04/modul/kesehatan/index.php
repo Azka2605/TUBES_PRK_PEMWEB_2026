@@ -2,14 +2,42 @@
 include '../../config/koneksi.php';
 include '../../views/header.php';
 
+$filter_jenis = isset($_GET['jenis_ternak']) && is_string($_GET['jenis_ternak'])
+    ? $_GET['jenis_ternak']
+    : 'semua';
+$jenis_ternak_valid = [
+    'sapi' => 'Sapi%',
+    'kambing' => 'Kambing%',
+    'ayam' => 'Ayam Petelur%'
+];
+if ($filter_jenis !== 'semua' && !isset($jenis_ternak_valid[$filter_jenis])) {
+    $filter_jenis = 'semua';
+}
+$label_jenis_ternak = [
+    'semua' => 'Semua Ternak',
+    'sapi' => 'Sapi',
+    'kambing' => 'Kambing',
+    'ayam' => 'Ayam Petelur'
+];
+
 // Daftar rekam medis + JOIN ke ternak (tag number) dan users (nama dokter)
-$query = mysqli_query($koneksi, "SELECT lk.id_kesehatan, lk.tgl_periksa, lk.diagnosa, lk.tindakan_medis, lk.obat_vaksin,
-                                        t.tag_number, t.status_kesehatan,
-                                        u.nama_lengkap AS nama_dokter
-                                 FROM log_kesehatan lk
-                                 JOIN ternak t ON lk.id_ternak = t.id_ternak
-                                 LEFT JOIN users u ON lk.id_dokter = u.id_user
-                                 ORDER BY lk.tgl_periksa DESC, lk.id_kesehatan DESC");
+$sql = "SELECT lk.id_kesehatan, lk.tgl_periksa, lk.diagnosa, lk.tindakan_medis, lk.obat_vaksin,
+               t.tag_number, t.jenis_ras, t.status_kesehatan,
+               u.nama_lengkap AS nama_dokter
+        FROM log_kesehatan lk
+        JOIN ternak t ON lk.id_ternak = t.id_ternak
+        LEFT JOIN users u ON lk.id_dokter = u.id_user";
+if ($filter_jenis !== 'semua') {
+    $sql .= " WHERE t.jenis_ras LIKE ?";
+}
+$sql .= " ORDER BY lk.tgl_periksa DESC, lk.id_kesehatan DESC";
+$stmt = mysqli_prepare($koneksi, $sql);
+if ($filter_jenis !== 'semua') {
+    $jenis_ras_filter = $jenis_ternak_valid[$filter_jenis];
+    mysqli_stmt_bind_param($stmt, 's', $jenis_ras_filter);
+}
+mysqli_stmt_execute($stmt);
+$query = mysqli_stmt_get_result($stmt);
 
 if (!$query) {
     die('Query gagal: ' . mysqli_error($koneksi));
@@ -31,7 +59,36 @@ if (!$query) {
     <?php endif; ?>
 <?php endif; ?>
 
+<style>
+    .health-filter .nav-link {
+        color: #146c43;
+    }
+
+    .health-filter .nav-link.active {
+        background-color: #198754;
+        color: #fff;
+    }
+</style>
+
 <div class="card shadow-sm">
+    <div class="card-body border-bottom">
+        <div class="nav nav-pills flex-wrap gap-2 health-filter" aria-label="Filter rekam medis berdasarkan jenis ternak">
+            <?php foreach ($label_jenis_ternak as $jenis => $label): ?>
+                <a href="index.php?jenis_ternak=<?= urlencode($jenis) ?>"
+                   class="nav-link <?= $filter_jenis === $jenis ? 'active' : '' ?>"
+                   <?= $filter_jenis === $jenis ? 'aria-current="page"' : '' ?>>
+                    <?php if ($jenis === 'ayam'): ?>
+                        <i class="bi bi-egg me-1" aria-hidden="true"></i>
+                    <?php elseif ($jenis === 'semua'): ?>
+                        <i class="bi bi-grid me-1" aria-hidden="true"></i>
+                    <?php else: ?>
+                        <i class="bi bi-heart-pulse me-1" aria-hidden="true"></i>
+                    <?php endif; ?>
+                    <?= htmlspecialchars($label) ?>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover table-striped align-middle mb-0">
@@ -40,6 +97,7 @@ if (!$query) {
                         <th>No</th>
                         <th>Tanggal</th>
                         <th>No Tag</th>
+                        <th>Jenis / Ras</th>
                         <th>Dokter</th>
                         <th>Diagnosa</th>
                         <th>Tindakan Medis</th>
@@ -61,6 +119,7 @@ if (!$query) {
                         <td><?= $no++; ?></td>
                         <td><?= htmlspecialchars($row['tgl_periksa']); ?></td>
                         <td><strong><?= htmlspecialchars($row['tag_number']); ?></strong></td>
+                        <td><?= htmlspecialchars($row['jenis_ras']); ?></td>
                         <td><?= htmlspecialchars($row['nama_dokter'] ?? 'Tidak diketahui'); ?></td>
                         <td><?= htmlspecialchars($row['diagnosa']); ?></td>
                         <td><?= htmlspecialchars($row['tindakan_medis'] ?? '-'); ?></td>
@@ -76,7 +135,7 @@ if (!$query) {
                     else:
                     ?>
                     <tr>
-                        <td colspan="9" class="text-center py-4 text-muted">Belum ada rekam medis. Klik tombol tambah di atas.</td>
+                        <td colspan="10" class="text-center py-4 text-muted">Belum ada rekam medis untuk <?= htmlspecialchars($label_jenis_ternak[$filter_jenis]) ?>. Klik tombol tambah di atas.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

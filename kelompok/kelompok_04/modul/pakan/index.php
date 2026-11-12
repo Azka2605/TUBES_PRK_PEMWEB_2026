@@ -19,6 +19,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
                         <th>No</th>
                         <th>Nama Pakan</th>
                         <th>Jenis Pakan</th>
+                        <th>Peruntukan</th>
                         <th>Stok</th>
                         <th>Satuan</th>
                         <th class="text-center">Aksi</th>
@@ -37,6 +38,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
                         <td><?= $no++; ?></td>
                         <td><strong><?= htmlspecialchars($row['nama_pakan']); ?></strong></td>
                         <td><span class="badge bg-secondary"><?= htmlspecialchars($row['jenis_pakan']); ?></span></td>
+                        <td><?= htmlspecialchars($row['peruntukan']); ?></td>
                         <td><span class="badge <?= $badge_stok; ?>"><?= number_format($row['stok_kg'], 2); ?></span></td>
                         <td><?= htmlspecialchars($row['satuan']); ?></td>
                         <td class="text-center">
@@ -49,7 +51,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
                     else:
                     ?>
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">Belum ada data pakan. Klik tombol tambah di atas.</td>
+                        <td colspan="7" class="text-center py-4 text-muted">Belum ada data pakan. Klik tombol tambah di atas.</td>
                     </tr>
                     <?php endif; ?>
                 </tbody>

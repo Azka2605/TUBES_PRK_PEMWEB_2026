@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS `riwayat_bobot` (
 CREATE TABLE IF NOT EXISTS `pakan` (
   `id_pakan` INT AUTO_INCREMENT PRIMARY KEY,
   `nama_pakan` VARCHAR(100) NOT NULL,
-  `jenis_pakan` ENUM('Konsentrat', 'Hijauan', 'Vitamin', 'Suplemen') NOT NULL,
+  `jenis_pakan` VARCHAR(50) NOT NULL,
+  `peruntukan` VARCHAR(100) NOT NULL,
   `stok_kg` DECIMAL(8,2) NOT NULL DEFAULT 0.00,
   `satuan` VARCHAR(20) DEFAULT 'Kg'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
