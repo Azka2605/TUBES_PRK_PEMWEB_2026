@@ -156,21 +156,22 @@ function aman($data) {
                                         Edit
                                     </a>
 
-                                    <form action="hapus.php"
-                                          method="POST"
-                                          class="d-inline"
-                                          onsubmit="return confirm('Apakah Anda yakin ingin menghapus pengguna ini?');">
+                                    
+<form action="/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04/modul/user/hapus.php"
+      method="POST"
+      onsubmit="return confirm('Yakin ingin menghapus pengguna ini?')">
 
-                                        <input type="hidden"
-                                               name="id_user"
-                                               value="<?= (int) $user['id_user']; ?>">
+    <input type="hidden"
+           name="id_user"
+           value="<?= aman($user['id_user']); ?>">
 
-                                        <button type="submit"
-                                                class="btn btn-danger btn-sm">
-                                            Hapus
-                                        </button>
+    <button type="submit" class="btn btn-danger btn-sm">
+        Hapus
+    </button>
+</form>
 
-                                    </form>
+
+                                    
                                 </td>
                             </tr>
 
