@@ -1,29 +1,41 @@
 
 <?php
-// ==================================================
-// 1. KONFIGURASI ERROR DAN SESSION
-// ==================================================
+// ==========================================
+// 1. PROTEKSI LOGIN
+// ==========================================
+require_once __DIR__ . '/includes/auth.check.php';
+
+// Mengambil data pengguna yang sedang login
+// Mengambil data pengguna yang sedang login
+$user = $_SESSION['user'] ?? [];
+
+// Mengambil nama pengguna
+$nama_user = $user['nama_lengkap']
+    ?? $user['username']
+    ?? 'Pengguna';
+
+// Mengambil role pengguna
+$role_user = strtolower(trim($user['role'] ?? ''));
+
+// Menentukan hak akses
+$is_admin = ($role_user === 'admin');
+$is_peternak = ($role_user === 'peternak');
+$is_dokter = ($role_user === 'dokter');
+
+// Base URL aplikasi
+$base_url = '/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04';
+
+// ==========================================
+// 2. KONFIGURASI ERROR
+// ==========================================
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// ==================================================
-// 2. CEK LOGIN
-// ==================================================
-if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
-    exit;
-}
-
-$user = $_SESSION['user'];
-
-// ==================================================
+// ==========================================
 // 3. KONEKSI DATABASE
-// ==================================================
+// ==========================================
 require_once __DIR__ . '/config/koneksi.php';
 
 // Mendukung nama variabel koneksi $conn atau $koneksi
@@ -250,14 +262,7 @@ if (
     }
 }
 
-// ==================================================
-// 9. INFORMASI USER
-// ==================================================
-$nama_user = $user['nama_lengkap']
-    ?? $user['username']
-    ?? 'Pengguna';
 
-$role_user = $user['role'] ?? 'user';
 ?>
 
 <!DOCTYPE html>
@@ -400,47 +405,99 @@ $role_user = $user['role'] ?? 'user';
     <div class="row">
 
         <!-- SIDEBAR -->
-        <div class="col-md-2 sidebar">
+        
+<!-- SIDEBAR -->
+<div class="col-md-2 sidebar">
 
-            <h5>
-                <i class="bi bi-hospital"></i>
-                Log Ternak K04
-            </h5>
+    <h5>
+        <i class="bi bi-hospital"></i>
+        Log Ternak K04
+    </h5>
 
-            <a href="index.php" class="active">
-                <i class="bi bi-grid"></i>
-                Dashboard
-            </a>
+    <!-- DASHBOARD: SEMUA ROLE -->
+    <a href="<?= $base_url ?>/index.php" class="active">
+        <i class="bi bi-grid"></i>
+        Dashboard
+    </a>
 
-            <a href="ternak.php">
-                <i class="bi bi-clipboard-data"></i>
-                Data Ternak
-            </a>
+    <!-- USER: KHUSUS ADMIN -->
+    <?php if ($is_admin): ?>
 
-            <a href="kandang.php">
-                <i class="bi bi-house"></i>
-                Data Kandang
-            </a>
+        <a href="<?= $base_url ?>/modul/user/index.php">
+            <i class="bi bi-people"></i>
+            Manajemen User
+        </a>
 
-            <a href="pakan.php">
-                <i class="bi bi-basket"></i>
-                Data Pakan
-            </a>
+    <?php endif; ?>
 
-            <a href="riwayat_bobot.php">
-                <i class="bi bi-graph-up"></i>
-                Riwayat Bobot
-            </a>
 
-            <hr>
+    <!-- DATA TERNAK: SEMUA ROLE -->
+    <a href="<?= $base_url ?>/modul/ternak/index.php">
+        <i class="bi bi-clipboard-data"></i>
+        Data Ternak
+    </a>
 
-            <a href="logout.php"
-               onclick="return confirm('Apakah Anda yakin ingin keluar?')">
-                <i class="bi bi-box-arrow-right"></i>
-                Logout
-            </a>
 
-        </div>
+    <!-- DATA KANDANG: ADMIN DAN PETERNAK -->
+    <?php if ($is_admin || $is_peternak): ?>
+
+        <a href="<?= $base_url ?>/modul/kandang/index.php">
+            <i class="bi bi-house"></i>
+            Data Kandang
+        </a>
+
+    <?php endif; ?>
+
+
+    <!-- DATA PAKAN: ADMIN DAN PETERNAK -->
+    <?php if ($is_admin || $is_peternak): ?>
+
+        <a href="<?= $base_url ?>/modul/pakan/index.php">
+            <i class="bi bi-basket"></i>
+            Data Pakan
+        </a>
+
+    <?php endif; ?>
+
+
+    <!-- REKAM MEDIS: ADMIN DAN DOKTER -->
+    <?php if ($is_admin || $is_dokter): ?>
+
+        <a href="<?= $base_url ?>/modul/kesehatan/index.php">
+            <i class="bi bi-heart-pulse"></i>
+            Rekam Medis
+        </a>
+
+    <?php endif; ?>
+
+
+    <!-- RIWAYAT BOBOT: SEMUA ROLE -->
+    <a href="<?= $base_url ?>/modul/bobot/index.php">
+        <i class="bi bi-graph-up"></i>
+        Riwayat Bobot
+    </a>
+
+
+    <!-- LAPORAN: SEMUA ROLE -->
+    <a href="<?= $base_url ?>/modul/laporan/index.php">
+        <i class="bi bi-file-earmark-text"></i>
+        Laporan
+    </a>
+
+
+    <hr>
+
+    <!-- LOGOUT: SEMUA ROLE -->
+    <a href="<?= $base_url ?>/logout.php"
+       onclick="return confirm('Apakah Anda yakin ingin keluar?')">
+
+        <i class="bi bi-box-arrow-right"></i>
+        Logout
+
+    </a>
+
+</div>
+
 
         <!-- KONTEN UTAMA -->
         <div class="col-md-10 main-content">
@@ -455,12 +512,26 @@ $role_user = $user['role'] ?? 'user';
                 </div>
 
                 <div class="text-end">
-                    <strong><?= htmlspecialchars($nama_user) ?></strong>
-                    <br>
-                    <span class="badge bg-success">
-                        <?= htmlspecialchars(ucfirst($role_user)) ?>
-                    </span>
-                </div>
+    <strong>
+        <?= htmlspecialchars($nama_user) ?>
+    </strong>
+
+    <br>
+
+    <span class="badge bg-success">
+        <?php
+        if ($role_user === 'admin') {
+            echo 'Admin';
+        } elseif ($role_user === 'peternak') {
+            echo 'Peternak';
+        } elseif ($role_user === 'dokter') {
+            echo 'Dokter Hewan';
+        } else {
+            echo 'Role tidak dikenali';
+        }
+        ?>
+    </span>
+</div>
             </div>
 
             <!-- KARTU STATISTIK -->
