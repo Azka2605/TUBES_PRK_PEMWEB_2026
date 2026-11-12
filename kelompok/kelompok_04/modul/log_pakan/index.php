@@ -55,9 +55,56 @@ $status_pesan = isset($_GET['status']) && $_GET['status'] === 'danger' ? 'danger
 include '../../views/header.php';
 ?>
 
-<div>
+<style>
+    .dashboard-page {
+        --dashboard-green-dark: #146c43;
+        --dashboard-green-soft: #eaf5ee;
+    }
+
+    .dashboard-page .dashboard-title {
+        color: #234b36;
+    }
+
+    .dashboard-page .stat-card {
+        border: 1px solid #e4ece6;
+        border-left: 4px solid var(--stat-color);
+        border-radius: 0.85rem;
+        background: #fff;
+        color: #234b36;
+        box-shadow: 0 0.25rem 0.85rem rgba(35, 75, 54, 0.07);
+    }
+
+    .dashboard-page .stat-card .card-title {
+        color: #6c7d72;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .dashboard-page .stat-card h2 {
+        color: var(--stat-color);
+        font-weight: 700;
+    }
+
+    .dashboard-page .stat-icon {
+        display: grid;
+        width: 3rem;
+        height: 3rem;
+        place-items: center;
+        border-radius: 0.75rem;
+        background: var(--stat-soft);
+        color: var(--stat-color);
+        font-size: 1.35rem;
+    }
+
+    .dashboard-page .stat-primary { --stat-color: #27865a; --stat-soft: #eaf5ee; }
+    .dashboard-page .stat-danger { --stat-color: #bd5b5b; --stat-soft: #f9eded; }
+    .dashboard-page .stat-warning { --stat-color: #a77a22; --stat-soft: #fbf4e3; }
+    .dashboard-page .stat-info { --stat-color: #4a8173; --stat-soft: #eaf3f1; }
+</style>
+
+<div class="container-fluid my-3 dashboard-page">
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
-        <h2 class="mb-0"><i class="bi bi-basket me-2"></i>Log Pemberian Pakan</h2>
+        <h2 class="dashboard-title mb-0"><i class="bi bi-basket me-2"></i>Log Pemberian Pakan</h2>
         <a href="tambah.php" class="btn btn-success align-self-start align-self-md-auto">
             <i class="bi bi-plus-circle me-1"></i> Catat Pemberian Pakan
         </a>
@@ -65,43 +112,43 @@ include '../../views/header.php';
 
     <div class="row g-3 mb-3">
         <div class="col-12 col-md-4">
-            <div class="card border-success h-100 shadow-sm">
+            <div class="card stat-card stat-primary h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Pemberian Bulan Ini</h6>
-                        <div class="fs-4 fw-bold text-success">
+                        <h6 class="card-title">Pemberian Bulan Ini</h6>
+                        <h2 class="mb-0">
                             <?= $ringkasan ? number_format((float)$ringkasan['total_bulan_ini'], 2, ',', '.') . ' kg' : '-' ?>
-                        </div>
+                        </h2>
                     </div>
-                    <i class="bi bi-calendar2-check fs-2 text-success" aria-hidden="true"></i>
+                    <span class="stat-icon"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
         <div class="col-12 col-md-4">
-            <div class="card border-primary h-100 shadow-sm">
+            <div class="card stat-card stat-info h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Log Hari Ini</h6>
-                        <div class="fs-4 fw-bold text-primary">
+                        <h6 class="card-title">Log Hari Ini</h6>
+                        <h2 class="mb-0">
                             <?= $ringkasan ? (int)$ringkasan['jumlah_hari_ini'] : '-' ?>
-                        </div>
+                        </h2>
                     </div>
-                    <i class="bi bi-journal-check fs-2 text-primary" aria-hidden="true"></i>
+                    <span class="stat-icon"><i class="bi bi-journal-check" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
         <div class="col-12 col-md-4">
-            <div class="card border-warning h-100 shadow-sm">
+            <div class="card stat-card stat-warning h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted mb-1">Pakan Paling Sering</h6>
-                        <div class="fs-5 fw-bold text-warning-emphasis">
+                        <h6 class="card-title">Pakan Paling Sering</h6>
+                        <h2 class="mb-0 fs-5 text-break">
                             <?= $ringkasan && $ringkasan['pakan_tersering'] !== null
                                 ? htmlspecialchars($ringkasan['pakan_tersering'])
                                 : '-' ?>
-                        </div>
+                        </h2>
                     </div>
-                    <i class="bi bi-trophy fs-2 text-warning" aria-hidden="true"></i>
+                    <span class="stat-icon"><i class="bi bi-trophy" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
