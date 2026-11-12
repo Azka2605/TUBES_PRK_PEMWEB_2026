@@ -5,21 +5,12 @@ include 'views/header.php';
 // Statistik dashboard
 $total_ternak  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak"))['jml'];
 $ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status_kesehatan = 'Sakit'"))['jml'];
-$ringkasan_ternak = mysqli_fetch_assoc(mysqli_query(
+$pakan_bulan_ini = mysqli_fetch_assoc(mysqli_query(
     $koneksi,
-    "SELECT
-        (SELECT COUNT(*) FROM ternak WHERE status_kesehatan = 'Karantina') AS ternak_karantina,
-        (SELECT AVG(rb.bobot_kg)
-         FROM riwayat_bobot rb
-         WHERE NOT EXISTS (
-             SELECT 1
-             FROM riwayat_bobot rb_terbaru
-             WHERE rb_terbaru.id_ternak = rb.id_ternak
-               AND (
-                   rb_terbaru.tgl_timbang > rb.tgl_timbang
-                   OR (rb_terbaru.tgl_timbang = rb.tgl_timbang AND rb_terbaru.id_bobot > rb.id_bobot)
-               )
-         )) AS rata_bobot_terbaru"
+    "SELECT COALESCE(SUM(jumlah_kg), 0) AS total_kg
+     FROM log_pemberian_pakan
+     WHERE tgl_pemberian >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+       AND tgl_pemberian < DATE_ADD(LAST_DAY(CURDATE()), INTERVAL 1 DAY)"
 ));
 $total_kandang = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM kandang"))['jml'];
 $stok_menipis  = mysqli_query($koneksi, "SELECT nama_pakan, stok_kg FROM pakan WHERE stok_kg < 10 ORDER BY stok_kg ASC");
@@ -192,28 +183,13 @@ while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
 
     <div class="row g-3 mt-1">
         <div class="col-md-6">
-            <div class="card stat-card stat-warning h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Ternak Karantina</h6>
-                        <h2 class="mb-0"><?= (int) $ringkasan_ternak['ternak_karantina'] ?></h2>
-                    </div>
-                    <span class="stat-icon"><i class="bi bi-shield-plus" aria-hidden="true"></i></span>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
             <div class="card stat-card stat-info h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title">Rata-rata Bobot Terbaru</h6>
-                        <h2 class="mb-0">
-                            <?= $ringkasan_ternak['rata_bobot_terbaru'] !== null
-                                ? number_format((float) $ringkasan_ternak['rata_bobot_terbaru'], 2, ',', '.') . ' kg'
-                                : '-' ?>
-                        </h2>
+                        <h6 class="card-title">Pakan Digunakan Bulan Ini</h6>
+                        <h2 class="mb-0"><?= number_format((float) $pakan_bulan_ini['total_kg'], 2, ',', '.') ?> kg</h2>
                     </div>
-                    <span class="stat-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+                    <span class="stat-icon"><i class="bi bi-basket2" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
@@ -233,7 +209,7 @@ while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
         <div class="col-md-6 col-lg-7 mt-4 mt-md-0">
             <div class="card dashboard-panel h-100">
                 <div class="card-header panel-heading">
-                    <h5 class="mb-0">Penggunaan Pakan per Jenis</h5>
+                    <h5 class="mb-0">Penggunaan Pakan per Jenis (Seluruh Periode)</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="chartPakanHarian" aria-label="Chart penggunaan pakan per jenis dalam kilogram" role="img"></canvas>
