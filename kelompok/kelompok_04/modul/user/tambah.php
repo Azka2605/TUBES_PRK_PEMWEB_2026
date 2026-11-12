@@ -1,6 +1,7 @@
 
 <?php
 // 1. Proteksi session
+$allowed_roles = ['admin'];
 require_once __DIR__ . '/../../includes/auth.check.php';
 
 // 2. Koneksi database

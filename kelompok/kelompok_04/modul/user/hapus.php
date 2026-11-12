@@ -1,6 +1,7 @@
 
 <?php
 // Memanggil autentikasi dan koneksi database
+$allowed_roles = ['admin'];
 require_once __DIR__ . '/../../includes/auth.check.php';
 require_once __DIR__ . '/../../config/koneksi.php';
 
