@@ -1,204 +1,108 @@
-
 <?php
-// ==========================================
-// 1. PROTEKSI SESSION
-// ==========================================
-require_once __DIR__ . '/../../includes/auth.check.php';
+include '../../config/koneksi.php';
+include '../../views/header.php';
 
-// ==========================================
-// 2. KONEKSI DATABASE
-// ==========================================
-require_once __DIR__ . '/../../config/koneksi.php';
-
-// ==========================================
-// 3. PEMBATASAN HAK AKSES
-// ==========================================
-if (!isset($_SESSION['user']) ||
-    $_SESSION['user']['role'] !== 'admin') {
-    http_response_code(403);
-    die("Anda tidak memiliki hak akses untuk halaman ini.");
+// Proteksi tambahan: pastikan hanya admin yang bisa mengakses halaman ini
+$cek_role = strtolower(trim($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? '')));
+if ($cek_role !== 'admin') {
+    echo "<script>alert('Akses ditolak! Halaman ini khusus Admin.'); window.location='../../index.php';</script>";
+    exit;
 }
 
-// ==========================================
-// 4. MENGAMBIL DATA USER
-// ==========================================
-$query = "SELECT id_user, username, nama_lengkap, role, created_at
-          FROM users
-          ORDER BY id_user DESC";
+// Filter berdasarkan Role
+$filter_role = isset($_GET['role']) ? trim($_GET['role']) : '';
+$allowed_roles = ['admin', 'peternak', 'dokter'];
+$where = "";
 
-$result = mysqli_query($koneksi, $query);
-
-if (!$result) {
-    die("Gagal mengambil data pengguna: " . mysqli_error($koneksi));
+if (in_array($filter_role, $allowed_roles, true)) {
+    $safe_role = mysqli_real_escape_string($koneksi, $filter_role);
+    $where = "WHERE role = '$safe_role'";
 }
 
-// ==========================================
-// 5. FUNGSI MENGAMANKAN OUTPUT
-// ==========================================
-function aman($data) {
-    return htmlspecialchars((string) $data, ENT_QUOTES, 'UTF-8');
-}
+$query_str = "SELECT * FROM users $where ORDER BY id_user DESC";
+$query = mysqli_query($koneksi, $query_str);
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen User - Log Ternak K04</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-</head>
-
-<body class="bg-light">
-
-<div class="container mt-5">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3>Manajemen Pengguna</h3>
-            <p class="text-muted">
-                Kelola akun pengguna Log Ternak K04
-            </p>
-        </div>
-
-        <a href="../../index.php" class="btn btn-secondary">
-            Kembali ke Dashboard
-        </a>
-    </div>
-
-    <?php if (isset($_GET['pesan']) && $_GET['pesan'] === 'tambah'): ?>
-        <div class="alert alert-success">
-            Pengguna berhasil ditambahkan.
-        </div>
-    <?php elseif (isset($_GET['pesan']) && $_GET['pesan'] === 'edit'): ?>
-        <div class="alert alert-success">
-            Data pengguna berhasil diperbarui.
-        </div>
-    <?php elseif (isset($_GET['pesan']) && $_GET['pesan'] === 'hapus'): ?>
-        <div class="alert alert-success">
-            Pengguna berhasil dihapus.
-        </div>
-    <?php endif; ?>
-
-    <div class="card shadow-sm">
-
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <strong>Daftar Pengguna</strong>
-
-            <a href="tambah.php" class="btn btn-light btn-sm">
-                + Tambah Pengguna
-            </a>
-        </div>
-
-        <div class="card-body">
-
-            <div class="table-responsive">
-
-                <table class="table table-bordered table-striped align-middle">
-
-                    <thead class="table-dark">
-                        <tr>
-                            <th>No</th>
-                            <th>Username</th>
-                            <th>Nama Lengkap</th>
-                            <th>Role</th>
-                            <th>Tanggal Dibuat</th>
-                            <th>Aksi</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                    <?php if (mysqli_num_rows($result) > 0): ?>
-
-                        <?php $no = 1; ?>
-
-                        <?php while ($user = mysqli_fetch_assoc($result)): ?>
-
-                            <tr>
-                                <td><?= $no++; ?></td>
-
-                                <td>
-                                    <?= aman($user['username']); ?>
-                                </td>
-
-                                <td>
-                                    <?= aman($user['nama_lengkap']); ?>
-                                </td>
-
-                                <td>
-                                    <?php
-                                    $warna = 'secondary';
-
-                                    if ($user['role'] === 'admin') {
-                                        $warna = 'danger';
-                                    } elseif ($user['role'] === 'peternak') {
-                                        $warna = 'success';
-                                    } elseif ($user['role'] === 'dokter') {
-                                        $warna = 'primary';
-                                    }
-                                    ?>
-
-                                    <span class="badge bg-<?= $warna; ?>">
-                                        <?= aman(ucfirst($user['role'])); ?>
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <?= aman($user['created_at']); ?>
-                                </td>
-
-                                <td>
-                                    <a href="edit.php?id=<?= (int) $user['id_user']; ?>"
-                                       class="btn btn-warning btn-sm">
-                                        Edit
-                                    </a>
-
-                                    
-<form action="/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04/modul/user/hapus.php"
-      method="POST"
-      onsubmit="return confirm('Yakin ingin menghapus pengguna ini?')">
-
-    <input type="hidden"
-           name="id_user"
-           value="<?= aman($user['id_user']); ?>">
-
-    <button type="submit" class="btn btn-danger btn-sm">
-        Hapus
-    </button>
-</form>
-
-
-                                    
-                                </td>
-                            </tr>
-
-                        <?php endwhile; ?>
-
-                    <?php else: ?>
-
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                Belum ada data pengguna.
-                            </td>
-                        </tr>
-
-                    <?php endif; ?>
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </div>
-    </div>
-
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people me-2"></i>Data Pengguna (User)</h2>
+    <a href="tambah.php" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i>Tambah User</a>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Filter Role -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <form method="GET" action="" class="row g-3 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label fw-bold">Filter Role:</label>
+            </div>
+            <div class="col-auto">
+                <select name="role" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Semua Role --</option>
+                    <option value="admin" <?= $filter_role === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                    <option value="peternak" <?= $filter_role === 'peternak' ? 'selected' : ''; ?>>Peternak</option>
+                    <option value="dokter" <?= $filter_role === 'dokter' ? 'selected' : ''; ?>>Dokter</option>
+                </select>
+            </div>
+            <?php if ($filter_role !== ''): ?>
+                <div class="col-auto">
+                    <a href="index.php" class="btn btn-outline-secondary btn-sm">Reset Filter</a>
+                </div>
+            <?php endif; ?>
+        </form>
+    </div>
+</div>
 
-</body>
-</html>
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0">
+                <thead class="table-success">
+                    <tr>
+                        <th>No</th>
+                        <th>Username</th>
+                        <th>Nama Lengkap</th>
+                        <th>Role</th>
+                        <th>Tanggal Dibuat</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $no = 1;
+                    if (mysqli_num_rows($query) > 0):
+                        while ($row = mysqli_fetch_assoc($query)): 
+                            $badge_role = 'bg-secondary';
+                            if ($row['role'] === 'admin') $badge_role = 'bg-danger';
+                            if ($row['role'] === 'peternak') $badge_role = 'bg-success';
+                            if ($row['role'] === 'dokter') $badge_role = 'bg-info text-dark';
+                    ?>
+                    <tr>
+                        <td><?= $no++; ?></td>
+                        <td><strong><?= htmlspecialchars($row['username']); ?></strong></td>
+                        <td><?= htmlspecialchars($row['nama_lengkap']); ?></td>
+                        <td><span class="badge <?= $badge_role; ?>"><?= ucfirst(htmlspecialchars($row['role'])); ?></span></td>
+                        <td><?= !empty($row['created_at']) ? date('d M Y, H:i', strtotime($row['created_at'])) : '-'; ?></td>
+                        <td class="text-center">
+                            <a href="edit.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-warning btn-sm me-1">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                            <a href="hapus.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus user ini?')">
+                                <i class="bi bi-trash"></i> Hapus
+                            </a>
+                        </td>
+                    </tr>
+                    <?php 
+                        endwhile; 
+                    else:
+                    ?>
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">Belum ada data user. Klik tombol tambah di atas.</td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<?php include '../../views/footer.php'; ?>

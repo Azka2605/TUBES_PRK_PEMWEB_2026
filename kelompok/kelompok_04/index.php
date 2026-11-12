@@ -1,778 +1,400 @@
-
 <?php
-// ==========================================
-// 1. PROTEKSI LOGIN
-// ==========================================
-require_once __DIR__ . '/includes/auth.check.php';
+include 'config/koneksi.php';
+include 'views/header.php';
 
-// Mengambil data pengguna yang sedang login
-// Mengambil data pengguna yang sedang login
-$user = $_SESSION['user'] ?? [];
-
-// Mengambil nama pengguna
-$nama_user = $user['nama_lengkap']
-    ?? $user['username']
-    ?? 'Pengguna';
-
-// Mengambil role pengguna
-$role_user = strtolower(trim($user['role'] ?? ''));
-
-// Menentukan hak akses
-$is_admin = ($role_user === 'admin');
-$is_peternak = ($role_user === 'peternak');
-$is_dokter = ($role_user === 'dokter');
-
-// Base URL aplikasi
-$base_url = '/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04';
-
-// ==========================================
-// 2. KONFIGURASI ERROR
-// ==========================================
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-
-// ==========================================
-// 3. KONEKSI DATABASE
-// ==========================================
-require_once __DIR__ . '/config/koneksi.php';
-
-// Mendukung nama variabel koneksi $conn atau $koneksi
-if (isset($conn) && $conn instanceof mysqli) {
-    $db = $conn;
-} elseif (isset($koneksi) && $koneksi instanceof mysqli) {
-    $db = $koneksi;
-} else {
-    die("Koneksi database tidak ditemukan. Periksa config/koneksi.php");
+// Statistik dashboard
+$total_ternak  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak"))['jml'];
+$ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status_kesehatan = 'Sakit'"))['jml'];
+$ringkasan_ternak = mysqli_fetch_assoc(mysqli_query(
+    $koneksi,
+    "SELECT
+        (SELECT COUNT(*) FROM ternak WHERE status_kesehatan = 'Karantina') AS ternak_karantina,
+        (SELECT AVG(rb.bobot_kg)
+         FROM riwayat_bobot rb
+         WHERE NOT EXISTS (
+             SELECT 1
+             FROM riwayat_bobot rb_terbaru
+             WHERE rb_terbaru.id_ternak = rb.id_ternak
+               AND (
+                   rb_terbaru.tgl_timbang > rb.tgl_timbang
+                   OR (rb_terbaru.tgl_timbang = rb.tgl_timbang AND rb_terbaru.id_bobot > rb.id_bobot)
+               )
+         )) AS rata_bobot_terbaru"
+));
+$total_kandang = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM kandang"))['jml'];
+$stok_menipis  = mysqli_query($koneksi, "SELECT nama_pakan, stok_kg FROM pakan WHERE stok_kg < 10 ORDER BY stok_kg ASC");
+$jml_menipis   = mysqli_num_rows($stok_menipis);
+$distribusi_status = ['Sehat' => 0, 'Sakit' => 0, 'Karantina' => 0];
+$hasil_status = mysqli_query($koneksi, "SELECT status_kesehatan, COUNT(*) AS jumlah FROM ternak GROUP BY status_kesehatan");
+while ($status = mysqli_fetch_assoc($hasil_status)) {
+    $distribusi_status[$status['status_kesehatan']] = (int) $status['jumlah'];
 }
-
-// ==================================================
-// 4. FUNGSI PEMBANTU DATABASE
-// ==================================================
-function tableExists($db, $table) {
-    $table = $db->real_escape_string($table);
-    $result = $db->query("SHOW TABLES LIKE '$table'");
-    return $result && $result->num_rows > 0;
-}
-
-function getColumns($db, $table) {
-    $columns = [];
-
-    if (!tableExists($db, $table)) {
-        return $columns;
-    }
-
-    $result = $db->query("SHOW COLUMNS FROM `$table`");
-
-    while ($row = $result->fetch_assoc()) {
-        $columns[] = $row['Field'];
-    }
-
-    return $columns;
-}
-
-function findColumn($columns, $candidates) {
-    foreach ($candidates as $candidate) {
-        if (in_array($candidate, $columns, true)) {
-            return $candidate;
-        }
-    }
-
-    return null;
-}
-
-function getCount($db, $table) {
-    if (!tableExists($db, $table)) {
-        return 0;
-    }
-
-    $result = $db->query("SELECT COUNT(*) AS total FROM `$table`");
-    return (int) $result->fetch_assoc()['total'];
-}
-
-function rupiahNumber($number) {
-    return number_format((float) $number, 1, ',', '.');
-}
-
-// ==================================================
-// 5. MEMBACA STRUKTUR TABEL
-// ==================================================
-$ternakColumns = getColumns($db, 'ternak');
-$kandangColumns = getColumns($db, 'kandang');
-$pakanColumns = getColumns($db, 'pakan');
-$riwayatColumns = getColumns($db, 'riwayat_bobot');
-
-$statusColumn = findColumn(
-    $ternakColumns,
-    ['status', 'kondisi', 'status_ternak']
+$ternak_per_kandang = mysqli_query(
+    $koneksi,
+    "SELECT k.nama_kandang, k.kapasitas, COUNT(t.id_ternak) AS jumlah_ternak
+     FROM kandang k
+     LEFT JOIN ternak t ON t.id_kandang = k.id_kandang
+     GROUP BY k.id_kandang, k.nama_kandang, k.kapasitas
+     ORDER BY k.nama_kandang"
 );
-
-$bobotColumn = findColumn(
-    $ternakColumns,
-    ['bobot', 'bobot_terakhir', 'berat']
+$pemeriksaan_terbaru = mysqli_query(
+    $koneksi,
+    "SELECT lk.tgl_periksa, lk.diagnosa, t.tag_number, u.nama_lengkap AS dokter
+     FROM log_kesehatan lk
+     JOIN ternak t ON t.id_ternak = lk.id_ternak
+     LEFT JOIN users u ON u.id_user = lk.id_dokter
+     ORDER BY lk.tgl_periksa DESC, lk.id_kesehatan DESC
+     LIMIT 5"
 );
-
-$kandangIdColumn = findColumn(
-    $ternakColumns,
-    ['id_kandang', 'kandang_id']
+$penggunaan_harian = mysqli_query(
+    $koneksi,
+    "SELECT DATE(tgl_pemberian) AS tanggal, SUM(jumlah_kg) AS total_kg
+     FROM log_pemberian_pakan
+     WHERE tgl_pemberian >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       AND tgl_pemberian < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+     GROUP BY DATE(tgl_pemberian)
+     ORDER BY tanggal"
 );
-
-$stokColumn = findColumn(
-    $pakanColumns,
-    ['stok', 'stok_kg', 'jumlah_stok']
-);
-
-$riwayatBobotColumn = findColumn(
-    $riwayatColumns,
-    ['bobot', 'berat']
-);
-
-$tanggalColumn = findColumn(
-    $riwayatColumns,
-    ['tanggal', 'tanggal_catat', 'created_at']
-);
-
-// ==================================================
-// 6. MENGHITUNG STATISTIK DASHBOARD
-// ==================================================
-$total_ternak = getCount($db, 'ternak');
-$total_kandang = getCount($db, 'kandang');
-
-$ternak_sakit = 0;
-$ternak_karantina = 0;
-$rata_rata_bobot = 0;
-$jml_menipis = 0;
-
-// Menghitung ternak sakit dan karantina
-if ($statusColumn && tableExists($db, 'ternak')) {
-    $sql = "
-        SELECT
-            SUM(LOWER(`$statusColumn`) = 'sakit') AS sakit,
-            SUM(LOWER(`$statusColumn`) = 'karantina') AS karantina
-        FROM ternak
-    ";
-
-    $result = $db->query($sql);
-    $data = $result->fetch_assoc();
-
-    $ternak_sakit = (int) ($data['sakit'] ?? 0);
-    $ternak_karantina = (int) ($data['karantina'] ?? 0);
+$total_pakan_harian = [];
+while ($pemakaian = mysqli_fetch_assoc($penggunaan_harian)) {
+    $total_pakan_harian[$pemakaian['tanggal']] = (float) $pemakaian['total_kg'];
 }
-
-// Menghitung rata-rata bobot ternak
-if ($bobotColumn && tableExists($db, 'ternak')) {
-    $sql = "
-        SELECT AVG(`$bobotColumn`) AS rata_rata
-        FROM ternak
-        WHERE `$bobotColumn` > 0
-    ";
-
-    $result = $db->query($sql);
-    $data = $result->fetch_assoc();
-
-    $rata_rata_bobot = (float) ($data['rata_rata'] ?? 0);
+$label_pakan_harian = [];
+$data_pakan_harian = [];
+$tanggal = new DateTimeImmutable('today');
+for ($hari = 6; $hari >= 0; $hari--) {
+    $tanggal_harian = $tanggal->modify("-$hari days");
+    $tanggal_key = $tanggal_harian->format('Y-m-d');
+    $label_pakan_harian[] = $tanggal_harian->format('d/m');
+    $data_pakan_harian[] = $total_pakan_harian[$tanggal_key] ?? 0;
 }
-
-// Menghitung stok pakan di bawah 10 kg
-if ($stokColumn && tableExists($db, 'pakan')) {
-    $sql = "
-        SELECT COUNT(*) AS total
-        FROM pakan
-        WHERE `$stokColumn` < 10
-    ";
-
-    $result = $db->query($sql);
-    $jml_menipis = (int) $result->fetch_assoc()['total'];
-}
-
-// ==================================================
-// 7. DATA RINGKASAN TERNAK PER KANDANG
-// ==================================================
-$ringkasan_ternak = [];
-
-if (
-    tableExists($db, 'ternak') &&
-    tableExists($db, 'kandang') &&
-    $kandangIdColumn
-) {
-    $kandangPrimary = findColumn(
-        $kandangColumns,
-        ['id_kandang', 'id']
-    );
-
-    $namaKandangColumn = findColumn(
-        $kandangColumns,
-        ['nama_kandang', 'nama', 'kode_kandang']
-    );
-
-    if ($kandangPrimary && $namaKandangColumn) {
-        $sql = "
-            SELECT
-                k.`$namaKandangColumn` AS nama_kandang,
-                COUNT(t.`$kandangIdColumn`) AS jumlah_ternak
-            FROM kandang k
-            LEFT JOIN ternak t
-                ON k.`$kandangPrimary` = t.`$kandangIdColumn`
-            GROUP BY k.`$kandangPrimary`
-            ORDER BY k.`$kandangPrimary` ASC
-        ";
-
-        $result = $db->query($sql);
-
-        while ($row = $result->fetch_assoc()) {
-            $ringkasan_ternak[] = $row;
-        }
-    }
-}
-
-// ==================================================
-// 8. DATA GRAFIK PERKEMBANGAN BOBOT
-// ==================================================
-$label_grafik = [];
-$data_grafik = [];
-
-if (
-    tableExists($db, 'riwayat_bobot') &&
-    $riwayatBobotColumn &&
-    $tanggalColumn
-) {
-    $sql = "
-        SELECT
-            DATE(`$tanggalColumn`) AS tanggal,
-            AVG(`$riwayatBobotColumn`) AS rata_bobot
-        FROM riwayat_bobot
-        GROUP BY DATE(`$tanggalColumn`)
-        ORDER BY DATE(`$tanggalColumn`) ASC
-        LIMIT 30
-    ";
-
-    $result = $db->query($sql);
-
-    while ($row = $result->fetch_assoc()) {
-        $label_grafik[] = date(
-            'd/m/Y',
-            strtotime($row['tanggal'])
-        );
-
-        $data_grafik[] = round(
-            (float) $row['rata_bobot'],
-            2
-        );
-    }
-}
-
-
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    .dashboard-page {
+        --dashboard-green-dark: #146c43;
+        --dashboard-green-soft: #eaf5ee;
+    }
 
-    <title>Dashboard - Log Ternak K04</title>
+    .dashboard-page .dashboard-title {
+        color: #234b36;
+    }
 
-    <!-- Bootstrap -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
+    .dashboard-page .stat-card,
+    .dashboard-page .dashboard-panel {
+        border: 1px solid #e4ece6;
+        border-radius: 0.85rem;
+        box-shadow: 0 0.25rem 0.85rem rgba(35, 75, 54, 0.07);
+    }
 
-    <!-- Bootstrap Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
-          rel="stylesheet">
+    .dashboard-page .stat-card {
+        border-left: 4px solid var(--stat-color);
+        background: #fff;
+        color: #234b36;
+    }
 
-    <style>
-        body {
-            background: #f5f7fb;
-            font-family: Arial, sans-serif;
-            color: #333;
-        }
+    .dashboard-page .stat-card .card-title {
+        color: #6c7d72;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
 
-        .sidebar {
-            min-height: 100vh;
-            background: #183b2b;
-            color: white;
-            padding: 25px 15px;
-        }
+    .dashboard-page .stat-card h2 {
+        color: var(--stat-color);
+        font-weight: 700;
+    }
 
-        .sidebar h5 {
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
+    .dashboard-page .stat-icon {
+        display: grid;
+        width: 3rem;
+        height: 3rem;
+        place-items: center;
+        border-radius: 0.75rem;
+        background: var(--stat-soft);
+        color: var(--stat-color);
+        font-size: 1.35rem;
+    }
 
-        .sidebar a {
-            display: block;
-            color: #e9f5ed;
-            text-decoration: none;
-            padding: 12px 14px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
+    .dashboard-page .stat-primary { --stat-color: #27865a; --stat-soft: #eaf5ee; }
+    .dashboard-page .stat-danger { --stat-color: #bd5b5b; --stat-soft: #f9eded; }
+    .dashboard-page .stat-warning { --stat-color: #a77a22; --stat-soft: #fbf4e3; }
+    .dashboard-page .stat-info { --stat-color: #4a8173; --stat-soft: #eaf3f1; }
 
-        .sidebar a:hover,
-        .sidebar a.active {
-            background: #2d6548;
-            color: white;
-        }
+    .dashboard-page .panel-heading {
+        border-bottom: 1px solid #dcebe1;
+        border-radius: 0.85rem 0.85rem 0 0;
+        background: var(--dashboard-green-soft);
+        color: var(--dashboard-green-dark);
+    }
 
-        .main-content {
-            padding: 30px;
-        }
+    .dashboard-page .table thead th {
+        background: #f3f8f4;
+        color: #345b44;
+        font-weight: 600;
+        white-space: nowrap;
+    }
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
+    .dashboard-page .table > :not(caption) > * > * {
+        padding: 0.8rem 1rem;
+    }
 
-        .stat-card {
-            border: none;
-            border-radius: 14px;
-            padding: 22px;
-            height: 100%;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-        }
+    .dashboard-page .alert-warning {
+        border-color: #f0dfb5;
+        background: #fff9eb;
+        color: #70551d;
+    }
+</style>
 
-        .stat-card h6 {
-            color: #777;
-            font-size: 14px;
-        }
+<div class="container-fluid my-3 dashboard-page">
+    <div class="mb-4">
+        <h2 class="dashboard-title mb-1">Dashboard</h2>
+        <p class="text-muted mb-0">Ringkasan kondisi ternak, kandang, dan pakan.</p>
+    </div>
 
-        .stat-card h3 {
-            font-size: 27px;
-            font-weight: bold;
-            margin-top: 12px;
-        }
-
-        .stat-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-        }
-
-        .content-card {
-            background: white;
-            border: none;
-            border-radius: 14px;
-            padding: 22px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-            height: 100%;
-        }
-
-        .content-card h5 {
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
-
-        .table thead th {
-            background: #f0f4f1;
-            color: #355443;
-            font-size: 13px;
-        }
-
-        .table td {
-            vertical-align: middle;
-        }
-
-        .footer {
-            color: #888;
-            font-size: 13px;
-            margin-top: 30px;
-        }
-
-        @media (max-width: 767px) {
-            .sidebar {
-                min-height: auto;
-            }
-
-            .main-content {
-                padding: 18px;
-            }
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="container-fluid">
-    <div class="row">
-
-        <!-- SIDEBAR -->
-        
-<!-- SIDEBAR -->
-<div class="col-md-2 sidebar">
-
-    <h5>
-        <i class="bi bi-hospital"></i>
-        Log Ternak K04
-    </h5>
-
-    <!-- DASHBOARD: SEMUA ROLE -->
-    <a href="<?= $base_url ?>/index.php" class="active">
-        <i class="bi bi-grid"></i>
-        Dashboard
-    </a>
-
-    <!-- USER: KHUSUS ADMIN -->
-    <?php if ($is_admin): ?>
-
-        <a href="<?= $base_url ?>/modul/user/index.php">
-            <i class="bi bi-people"></i>
-            Manajemen User
-        </a>
-
-    <?php endif; ?>
-
-
-    <!-- DATA TERNAK: SEMUA ROLE -->
-    <a href="<?= $base_url ?>/modul/ternak/index.php">
-        <i class="bi bi-clipboard-data"></i>
-        Data Ternak
-    </a>
-
-
-    <!-- DATA KANDANG: ADMIN DAN PETERNAK -->
-    <?php if ($is_admin || $is_peternak): ?>
-
-        <a href="<?= $base_url ?>/modul/kandang/index.php">
-            <i class="bi bi-house"></i>
-            Data Kandang
-        </a>
-
-    <?php endif; ?>
-
-
-    <!-- DATA PAKAN: ADMIN DAN PETERNAK -->
-    <?php if ($is_admin || $is_peternak): ?>
-
-        <a href="<?= $base_url ?>/modul/pakan/index.php">
-            <i class="bi bi-basket"></i>
-            Data Pakan
-        </a>
-
-    <?php endif; ?>
-
-
-    <!-- REKAM MEDIS: ADMIN DAN DOKTER -->
-    <?php if ($is_admin || $is_dokter): ?>
-
-        <a href="<?= $base_url ?>/modul/kesehatan/index.php">
-            <i class="bi bi-heart-pulse"></i>
-            Rekam Medis
-        </a>
-
-    <?php endif; ?>
-
-
-    <!-- RIWAYAT BOBOT: SEMUA ROLE -->
-    <a href="<?= $base_url ?>/modul/bobot/index.php">
-        <i class="bi bi-graph-up"></i>
-        Riwayat Bobot
-    </a>
-
-
-    <!-- LAPORAN: SEMUA ROLE -->
-    <a href="<?= $base_url ?>/modul/laporan/index.php">
-        <i class="bi bi-file-earmark-text"></i>
-        Laporan
-    </a>
-
-
-    <hr>
-
-    <!-- LOGOUT: SEMUA ROLE -->
-    <a href="<?= $base_url ?>/logout.php"
-       onclick="return confirm('Apakah Anda yakin ingin keluar?')">
-
-        <i class="bi bi-box-arrow-right"></i>
-        Logout
-
-    </a>
-
-</div>
-
-
-        <!-- KONTEN UTAMA -->
-        <div class="col-md-10 main-content">
-
-            <!-- HEADER -->
-            <div class="topbar">
-                <div>
-                    <h3 class="fw-bold mb-1">Dashboard</h3>
-                    <p class="text-muted mb-0">
-                        Selamat datang di Sistem Informasi Log Ternak K04.
-                    </p>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <div class="card stat-card stat-primary h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Ternak</h6>
+                        <h2 class="mb-0"><?= $total_ternak ?></h2>
+                    </div>
+                    <span class="stat-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
                 </div>
-
-                <div class="text-end">
-    <strong>
-        <?= htmlspecialchars($nama_user) ?>
-    </strong>
-
-    <br>
-
-    <span class="badge bg-success">
-        <?php
-        if ($role_user === 'admin') {
-            echo 'Admin';
-        } elseif ($role_user === 'peternak') {
-            echo 'Peternak';
-        } elseif ($role_user === 'dokter') {
-            echo 'Dokter Hewan';
-        } else {
-            echo 'Role tidak dikenali';
-        }
-        ?>
-    </span>
-</div>
             </div>
-
-            <!-- KARTU STATISTIK -->
-            <div class="row g-3 mb-4">
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6>Total Ternak</h6>
-                                <h3><?= $total_ternak ?></h3>
-                            </div>
-                            <div class="stat-icon bg-success-subtle text-success">
-                                <i class="bi bi-clipboard-data"></i>
-                            </div>
-                        </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-danger h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Ternak Sakit</h6>
+                        <h2 class="mb-0"><?= $ternak_sakit ?></h2>
                     </div>
+                    <span class="stat-icon"><i class="bi bi-heart-pulse" aria-hidden="true"></i></span>
                 </div>
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6>Ternak Sakit</h6>
-                                <h3><?= $ternak_sakit ?></h3>
-                            </div>
-                            <div class="stat-icon bg-danger-subtle text-danger">
-                                <i class="bi bi-heart-pulse"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6>Jumlah Kandang</h6>
-                                <h3><?= $total_kandang ?></h3>
-                            </div>
-                            <div class="stat-icon bg-primary-subtle text-primary">
-                                <i class="bi bi-house"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 col-sm-6">
-                    <div class="card stat-card">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h6>Stok Pakan < 10 Kg</h6>
-                                <h3><?= $jml_menipis ?></h3>
-                            </div>
-                            <div class="stat-icon bg-warning-subtle text-warning">
-                                <i class="bi bi-basket"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-
-            <!-- INFORMASI TAMBAHAN -->
-            <div class="row g-3 mb-4">
-
-                <div class="col-md-6">
-                    <div class="card stat-card">
-                        <h6>Ternak Karantina</h6>
-                        <h3><?= $ternak_karantina ?></h3>
-                        <small class="text-muted">
-                            Jumlah ternak dengan status karantina
-                        </small>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-primary h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Jumlah Kandang</h6>
+                        <h2 class="mb-0"><?= $total_kandang ?></h2>
                     </div>
+                    <span class="stat-icon"><i class="bi bi-house-door" aria-hidden="true"></i></span>
                 </div>
-
-                <div class="col-md-6">
-                    <div class="card stat-card">
-                        <h6>Rata-rata Bobot Terbaru</h6>
-                        <h3>
-                            <?= $rata_rata_bobot > 0
-                                ? rupiahNumber($rata_rata_bobot) . ' Kg'
-                                : '-' ?>
-                        </h3>
-                        <small class="text-muted">
-                            Rata-rata bobot berdasarkan data ternak
-                        </small>
-                    </div>
-                </div>
-
             </div>
-
-            <!-- GRAFIK DAN TABEL -->
-            <div class="row g-3">
-
-                <!-- GRAFIK -->
-                <div class="col-lg-7">
-                    <div class="content-card">
-                        <h5>
-                            <i class="bi bi-graph-up text-success"></i>
-                            Grafik Perkembangan Bobot Ternak
-                        </h5>
-
-                        <?php if (count($data_grafik) > 0): ?>
-                            <canvas id="grafikBobot" height="120"></canvas>
-                        <?php else: ?>
-                            <p class="text-muted text-center py-4">
-                                Belum ada data riwayat bobot ternak.
-                            </p>
-                        <?php endif; ?>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card stat-warning h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Stok Pakan &lt; 10 Kg</h6>
+                        <h2 class="mb-0"><?= $jml_menipis ?> jenis</h2>
                     </div>
+                    <span class="stat-icon"><i class="bi bi-basket" aria-hidden="true"></i></span>
                 </div>
-
-                <!-- RINGKASAN KANDANG -->
-                <div class="col-lg-5">
-                    <div class="content-card">
-                        <h5>
-                            <i class="bi bi-house text-success"></i>
-                            Ringkasan Ternak per Kandang
-                        </h5>
-
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Nama Kandang</th>
-                                        <th>Jumlah Ternak</th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    <?php if (count($ringkasan_ternak) > 0): ?>
-
-                                        <?php foreach (
-                                            $ringkasan_ternak as $index => $row
-                                        ): ?>
-
-                                            <tr>
-                                                <td><?= $index + 1 ?></td>
-                                                <td>
-                                                    <?= htmlspecialchars(
-                                                        $row['nama_kandang']
-                                                    ) ?>
-                                                </td>
-                                                <td>
-                                                    <?= (int) $row['jumlah_ternak'] ?>
-                                                </td>
-                                            </tr>
-
-                                        <?php endforeach; ?>
-
-                                    <?php else: ?>
-
-                                        <tr>
-                                            <td colspan="3"
-                                                class="text-center text-muted">
-                                                Data kandang belum tersedia.
-                                            </td>
-                                        </tr>
-
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-
-            <!-- FOOTER -->
-            <div class="footer text-center">
-                &copy; <?= date('Y') ?> Log Ternak K04.
-                Sistem Informasi Monitoring Peternakan.
-            </div>
-
         </div>
     </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <div class="card stat-card stat-warning h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Ternak Karantina</h6>
+                        <h2 class="mb-0"><?= (int) $ringkasan_ternak['ternak_karantina'] ?></h2>
+                    </div>
+                    <span class="stat-icon"><i class="bi bi-shield-plus" aria-hidden="true"></i></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card stat-card stat-info h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Rata-rata Bobot Terbaru</h6>
+                        <h2 class="mb-0">
+                            <?= $ringkasan_ternak['rata_bobot_terbaru'] !== null
+                                ? number_format((float) $ringkasan_ternak['rata_bobot_terbaru'], 2, ',', '.') . ' kg'
+                                : '-' ?>
+                        </h2>
+                    </div>
+                    <span class="stat-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6 col-lg-5">
+            <div class="card dashboard-panel h-100">
+                <div class="card-header panel-heading">
+                    <h5 class="mb-0">Distribusi Status Ternak</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartStatusTernak" aria-label="Chart distribusi status ternak" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-7 mt-4 mt-md-0">
+            <div class="card dashboard-panel h-100">
+                <div class="card-header panel-heading">
+                    <h5 class="mb-0">Penggunaan Pakan 7 Hari Terakhir</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan pakan harian dalam kilogram" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card dashboard-panel mt-4">
+        <div class="card-header panel-heading">
+            <h5 class="mb-0">Ternak per Kandang</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Nama Kandang</th>
+                        <th>Jumlah Ternak</th>
+                        <th>Kapasitas</th>
+                        <th>Keterisian</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (mysqli_num_rows($ternak_per_kandang) > 0): ?>
+                        <?php while ($kandang = mysqli_fetch_assoc($ternak_per_kandang)):
+                            $persentase = (int) $kandang['kapasitas'] > 0
+                                ? ((int) $kandang['jumlah_ternak'] / (int) $kandang['kapasitas']) * 100
+                                : 0;
+                            $lebar_bar = min($persentase, 100);
+                        ?>
+                            <tr>
+                                <td><?= htmlspecialchars($kandang['nama_kandang']) ?></td>
+                                <td><?= (int) $kandang['jumlah_ternak'] ?></td>
+                                <td><?= (int) $kandang['kapasitas'] ?></td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" role="progressbar"
+                                             aria-label="Keterisian kandang"
+                                             aria-valuenow="<?= (int) $lebar_bar ?>"
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            <div class="progress-bar <?= $persentase > 100 ? 'bg-danger' : 'bg-success' ?>"
+                                                 style="width: <?= $lebar_bar ?>%"></div>
+                                        </div>
+                                        <span><?= number_format($persentase, 1) ?>%</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Belum ada data kandang.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card dashboard-panel mt-4">
+        <div class="card-header panel-heading d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">5 Pemeriksaan Kesehatan Terbaru</h5>
+            <a href="modul/laporan/index.php" class="btn btn-outline-success btn-sm">Lihat Laporan</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>No. Tag</th>
+                        <th>Diagnosa</th>
+                        <th>Dokter</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (mysqli_num_rows($pemeriksaan_terbaru) > 0): ?>
+                        <?php while ($pemeriksaan = mysqli_fetch_assoc($pemeriksaan_terbaru)): ?>
+                            <tr>
+                                <td><?= date('d/m/Y', strtotime($pemeriksaan['tgl_periksa'])) ?></td>
+                                <td><?= htmlspecialchars($pemeriksaan['tag_number']) ?></td>
+                                <td><?= htmlspecialchars($pemeriksaan['diagnosa']) ?></td>
+                                <td><?= htmlspecialchars($pemeriksaan['dokter'] ?? '-') ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">Belum ada pemeriksaan kesehatan.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <?php if ($jml_menipis > 0): ?>
+    <div class="alert alert-warning mt-4 shadow-sm">
+        <strong>Peringatan stok pakan menipis:</strong>
+        <ul class="mb-0">
+            <?php while ($p = mysqli_fetch_assoc($stok_menipis)): ?>
+                <li><?= htmlspecialchars($p['nama_pakan']) ?> (sisa <?= $p['stok_kg'] ?> kg)</li>
+            <?php endwhile; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
 </div>
 
-<!-- CHART JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-const labelBobot = <?= json_encode($label_grafik) ?>;
-const dataBobot = <?= json_encode($data_grafik) ?>;
+    const dataStatusTernak = <?= json_encode(array_values($distribusi_status), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
 
-const canvas = document.getElementById('grafikBobot');
-
-if (canvas && dataBobot.length > 0) {
-    new Chart(canvas, {
-        type: 'line',
-
+    new Chart(document.getElementById('chartStatusTernak'), {
+        type: 'doughnut',
         data: {
-            labels: labelBobot,
-
+            labels: ['Sehat', 'Sakit', 'Karantina'],
             datasets: [{
-                label: 'Rata-rata Bobot (Kg)',
-                data: dataBobot,
-
-                borderColor: '#198754',
-                backgroundColor: 'rgba(25, 135, 84, 0.12)',
-
-                borderWidth: 2,
-                fill: true,
-                tension: 0.3,
-
-                pointRadius: 4,
-                pointBackgroundColor: '#198754'
+                data: dataStatusTernak,
+                backgroundColor: ['#27865a', '#bd5b5b', '#d2a23b'],
+                borderColor: '#fff',
+                borderWidth: 3
             }]
         },
-
         options: {
             responsive: true,
-
+            maintainAspectRatio: true,
             plugins: {
-                legend: {
-                    display: true
-                }
-            },
+                legend: { position: 'bottom' }
+            }
+        }
+    });
 
+    new Chart(document.getElementById('chartPakanHarian'), {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($label_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            datasets: [{
+                label: 'Pakan (kg)',
+                data: <?= json_encode($data_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+                backgroundColor: 'rgba(39, 134, 90, 0.78)',
+                borderColor: '#27865a',
+                borderWidth: 1,
+                borderRadius: 6,
+                maxBarThickness: 42
+            }]
+        },
+        options: {
+            responsive: true,
             scales: {
                 y: {
                     beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Bobot (Kg)'
-                    }
-                },
-
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Tanggal'
-                    }
+                    title: { display: true, text: 'Kilogram' }
                 }
             }
         }
     });
-}
 </script>
 
-</body>
-</html>
+<?php include 'views/footer.php'; ?>

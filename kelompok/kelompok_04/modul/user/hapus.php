@@ -1,81 +1,35 @@
-
 <?php
-// Memanggil autentikasi dan koneksi database
-require_once __DIR__ . '/../../includes/auth.check.php';
-require_once __DIR__ . '/../../config/koneksi.php';
-
-// Memastikan hanya admin yang dapat menghapus pengguna
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    http_response_code(403);
-    die("Anda tidak memiliki hak akses.");
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
+include '../../config/koneksi.php';
 
-// Penghapusan hanya boleh melalui POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    die("Metode permintaan tidak diizinkan.");
-}
-
-// Mengambil dan memvalidasi ID pengguna
-$id_user = filter_input(INPUT_POST, 'id_user', FILTER_VALIDATE_INT);
-
-if (!$id_user || $id_user < 1) {
-    die("ID pengguna tidak valid.");
-}
-
-// Mengambil data pengguna yang akan dihapus
-$stmt = mysqli_prepare(
-    $koneksi,
-    "SELECT id_user, username, role FROM users WHERE id_user = ?"
-);
-mysqli_stmt_bind_param($stmt, "i", $id_user);
-mysqli_stmt_execute($stmt);
-
-$result = mysqli_stmt_get_result($stmt);
-$user = mysqli_fetch_assoc($result);
-mysqli_stmt_close($stmt);
-
-if (!$user) {
-    die("Pengguna tidak ditemukan.");
-}
-
-// Mencegah admin menghapus akun sendiri
-$id_login = $_SESSION['user']['id'] ?? $_SESSION['user']['id_user'] ?? null;
-
-if ($id_login !== null && (int) $id_login === (int) $id_user) {
-    die("Anda tidak dapat menghapus akun yang sedang digunakan.");
-}
-
-// Mencegah penghapusan admin terakhir
-if ($user['role'] === 'admin') {
-    $cek_admin = mysqli_query(
-        $koneksi,
-        "SELECT COUNT(*) AS jumlah FROM users WHERE role = 'admin'"
-    );
-
-    $data_admin = mysqli_fetch_assoc($cek_admin);
-
-    if ((int) $data_admin['jumlah'] <= 1) {
-        die("Admin terakhir tidak dapat dihapus.");
-    }
-}
-
-// Menghapus pengguna menggunakan prepared statement
-$hapus = mysqli_prepare(
-    $koneksi,
-    "DELETE FROM users WHERE id_user = ?"
-);
-
-mysqli_stmt_bind_param($hapus, "i", $id_user);
-
-if (mysqli_stmt_execute($hapus)) {
-    mysqli_stmt_close($hapus);
-
-    header("Location: index.php?pesan=hapus");
+// Proteksi khusus admin
+$cek_role = strtolower(trim($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? '')));
+if ($cek_role !== 'admin') {
+    echo "<script>alert('Akses ditolak! Halaman ini khusus Admin.'); window.location='../../index.php';</script>";
     exit;
 }
 
-mysqli_stmt_close($hapus);
+if (isset($_GET['id'])) {
+    $id = (int) $_GET['id'];
+    $id_sedang_login = (int) ($_SESSION['user']['id'] ?? ($_SESSION['id_user'] ?? 0));
 
-die("Gagal menghapus pengguna.");
+    // Cegah admin menghapus akunnya sendiri yang sedang aktif login
+    if ($id === $id_sedang_login) {
+        echo "<script>alert('Tidak dapat menghapus akun yang sedang digunakan untuk login!'); window.location='index.php';</script>";
+        exit;
+    }
+
+    // Hapus data user dari database
+    $hapus = mysqli_query($koneksi, "DELETE FROM users WHERE id_user = '$id'");
+
+    if ($hapus) {
+        echo "<script>alert('Data user berhasil dihapus!'); window.location='index.php';</script>";
+    } else {
+        echo "<script>alert('Gagal menghapus data user!'); window.location='index.php';</script>";
+    }
+} else {
+    header("Location: index.php");
+}
 ?>

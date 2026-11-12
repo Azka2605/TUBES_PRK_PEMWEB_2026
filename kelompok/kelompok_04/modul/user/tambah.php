@@ -1,144 +1,73 @@
-
 <?php
-// 1. Proteksi session
-require_once __DIR__ . '/../../includes/auth.check.php';
+include '../../config/koneksi.php';
+include '../../views/header.php';
 
-// 2. Koneksi database
-require_once __DIR__ . '/../../config/koneksi.php';
-
-// 3. Batasi akses hanya untuk admin
-if ($_SESSION['user']['role'] !== 'admin') {
-    http_response_code(403);
-    die("Anda tidak memiliki hak akses.");
+// Proteksi khusus admin
+$cek_role = strtolower(trim($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? '')));
+if ($cek_role !== 'admin') {
+    echo "<script>alert('Akses ditolak! Halaman ini khusus Admin.'); window.location='../../index.php';</script>";
+    exit;
 }
 
-$error = "";
-
-// 4. Proses tambah pengguna
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nama_lengkap = mysqli_real_escape_string($koneksi, trim($_POST['nama_lengkap']));
+    $username     = mysqli_real_escape_string($koneksi, trim($_POST['username']));
+    $password     = $_POST['password'];
+    $role         = mysqli_real_escape_string($koneksi, trim($_POST['role']));
 
-    $username = trim($_POST['username'] ?? '');
-    $nama_lengkap = trim($_POST['nama_lengkap'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $role = $_POST['role'] ?? '';
-
-    // Validasi input
-    if ($username === '' || $nama_lengkap === '' || $password === '' || $role === '') {
-        $error = "Semua kolom wajib diisi.";
-    } elseif (!in_array($role, ['admin', 'peternak', 'dokter'], true)) {
-        $error = "Role tidak valid.";
-    } elseif (strlen($password) < 8) {
-        $error = "Password minimal 8 karakter.";
-    } else {
-
-        // Cek username sudah digunakan
-        $cek = mysqli_prepare(
-            $koneksi,
-            "SELECT id_user FROM users WHERE username = ?"
-        );
-
-        mysqli_stmt_bind_param($cek, "s", $username);
-        mysqli_stmt_execute($cek);
-        mysqli_stmt_store_result($cek);
-
-        if (mysqli_stmt_num_rows($cek) > 0) {
-            $error = "Username sudah digunakan.";
-        } else {
-
-            // Hash password
-            $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-            // Simpan pengguna
-            $stmt = mysqli_prepare(
-                $koneksi,
-                "INSERT INTO users (username, password, nama_lengkap, role)
-                 VALUES (?, ?, ?, ?)"
-            );
-
-            mysqli_stmt_bind_param(
-                $stmt,
-                "ssss",
-                $username,
-                $password_hash,
-                $nama_lengkap,
-                $role
-            );
-
-            if (mysqli_stmt_execute($stmt)) {
-                header("Location: index.php?pesan=tambah");
-                exit;
-            } else {
-                $error = "Gagal menambahkan pengguna.";
-            }
-
-            mysqli_stmt_close($stmt);
-        }
-
-        mysqli_stmt_close($cek);
+    // Cek apakah username sudah digunakan
+    $cek_user = mysqli_query($koneksi, "SELECT id_user FROM users WHERE username = '$username'");
+    if (mysqli_num_rows($cek_user) > 0) {
+        echo "<script>alert('Username sudah terdaftar! Gunakan username lain.'); window.history.back();</script>";
+        exit;
     }
+
+    // Enkripsi password dengan standar Bcrypt PHP
+    $password_hash = password_hash($password, PASSWORD_BCRYPT);
+
+    $insert = mysqli_query($koneksi, "INSERT INTO users (username, password, nama_lengkap, role) 
+                                      VALUES ('$username', '$password_hash', '$nama_lengkap', '$role')");
+
+    if ($insert) {
+        echo "<script>alert('Data user berhasil ditambahkan!'); window.location='index.php';</script>";
+    } else {
+        echo "<script>alert('Gagal menambahkan data user!'); window.location='index.php';</script>";
+    }
+    exit;
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tambah Pengguna</title>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-person-plus me-2"></i>Tambah User Baru</h2>
+    <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
+</div>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-</head>
-
-<body class="bg-light">
-
-<div class="container mt-5">
-
-    <div class="card shadow-sm">
-
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Tambah Pengguna</h4>
-        </div>
-
-        <div class="card-body">
-
-            <?php if ($error !== ''): ?>
-                <div class="alert alert-danger">
-                    <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
-                </div>
-            <?php endif; ?>
-
-            <form method="POST">
-
-                <div class="mb-3">
-                    <label class="form-label">Username</label>
-                    <input type="text"
-                           name="username"
-                           class="form-control"
-                           maxlength="50"
-                           required>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST" action="">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" name="nama_lengkap" class="form-control" placeholder="Contoh: Budi Santoso" required>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Nama Lengkap</label>
-                    <input type="text"
-                           name="nama_lengkap"
-                           class="form-control"
-                           maxlength="100"
-                           required>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Username <span class="text-danger">*</span></label>
+                    <input type="text" name="username" class="form-control" placeholder="Contoh: peternak2" autocomplete="off" required>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Password</label>
-                    <input type="password"
-                           name="password"
-                           class="form-control"
-                           minlength="8"
-                           required>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="password" name="password" id="password" class="form-control" placeholder="Masukkan password" autocomplete="new-password" required>
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Role</label>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Role / Hak Akses <span class="text-danger">*</span></label>
                     <select name="role" class="form-select" required>
                         <option value="">-- Pilih Role --</option>
                         <option value="admin">Admin</option>
@@ -146,21 +75,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="dokter">Dokter</option>
                     </select>
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-primary">
-                    Simpan Pengguna
-                </button>
-
-                <a href="index.php" class="btn btn-secondary">
-                    Kembali
-                </a>
-
-            </form>
-
-        </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Simpan User</button>
+                <a href="index.php" class="btn btn-outline-secondary ms-1">Batal</a>
+            </div>
+        </form>
     </div>
-
 </div>
 
-</body>
-</html>
+<script>
+function togglePassword() {
+    const password = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    if (password.type === 'password') {
+        password.type = 'text';
+        eyeIcon.classList.remove('bi-eye');
+        eyeIcon.classList.add('bi-eye-slash');
+    } else {
+        password.type = 'password';
+        eyeIcon.classList.remove('bi-eye-slash');
+        eyeIcon.classList.add('bi-eye');
+    }
+}
+</script>
+
+<?php include '../../views/footer.php'; ?>

@@ -1,244 +1,129 @@
-
 <?php
-// ==========================================
-// 1. PROTEKSI SESSION
-// ==========================================
-require_once __DIR__ . '/../../includes/auth.check.php';
+include '../../config/koneksi.php';
+include '../../views/header.php';
 
-// ==========================================
-// 2. KONEKSI DATABASE
-// ==========================================
-require_once __DIR__ . '/../../config/koneksi.php';
-
-// ==========================================
-// 3. PEMBATASAN AKSES ADMIN
-// ==========================================
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    http_response_code(403);
-    die("Anda tidak memiliki hak akses.");
+// Proteksi khusus admin
+$cek_role = strtolower(trim($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? '')));
+if ($cek_role !== 'admin') {
+    echo "<script>alert('Akses ditolak! Halaman ini khusus Admin.'); window.location='../../index.php';</script>";
+    exit;
 }
 
-// ==========================================
-// 4. AMBIL ID PENGGUNA
-// ==========================================
-$id_user = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-
-if (!$id_user || $id_user < 1) {
-    die("ID pengguna tidak valid.");
+if (!isset($_GET['id'])) {
+    header("Location: index.php");
+    exit;
 }
 
-// ==========================================
-// 5. AMBIL DATA PENGGUNA
-// ==========================================
-$stmt = mysqli_prepare(
-    $koneksi,
-    "SELECT id_user, username, nama_lengkap, role
-     FROM users
-     WHERE id_user = ?"
-);
+$id = (int) $_GET['id'];
+$get_data = mysqli_query($koneksi, "SELECT * FROM users WHERE id_user = '$id'");
+$data = mysqli_fetch_assoc($get_data);
 
-mysqli_stmt_bind_param($stmt, "i", $id_user);
-mysqli_stmt_execute($stmt);
-
-$result = mysqli_stmt_get_result($stmt);
-$user = mysqli_fetch_assoc($result);
-
-mysqli_stmt_close($stmt);
-
-if (!$user) {
-    die("Data pengguna tidak ditemukan.");
+if (!$data) {
+    echo "<script>alert('Data user tidak ditemukan!'); window.location='index.php';</script>";
+    exit;
 }
-
-// ==========================================
-// 6. PROSES UPDATE
-// ==========================================
-$error = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username'] ?? '');
-    $nama_lengkap = trim($_POST['nama_lengkap'] ?? '');
-    $role = $_POST['role'] ?? '';
-    $password = $_POST['password'] ?? '';
+    $nama_lengkap = mysqli_real_escape_string($koneksi, trim($_POST['nama_lengkap']));
+    $username     = mysqli_real_escape_string($koneksi, trim($_POST['username']));
+    $role         = mysqli_real_escape_string($koneksi, trim($_POST['role']));
+    $password     = $_POST['password'] ?? '';
 
-    if ($username === '' || $nama_lengkap === '' || $role === '') {
-        $error = "Username, nama lengkap, dan role wajib diisi.";
-    } elseif (strlen($username) > 50 || strlen($nama_lengkap) > 100) {
-        $error = "Username maksimal 50 karakter dan nama lengkap maksimal 100 karakter.";
-    } elseif (!in_array($role, ['admin', 'peternak', 'dokter'], true)) {
-        $error = "Role tidak valid.";
-    } elseif ($password !== '' && strlen($password) < 8) {
-        $error = "Password baru minimal 8 karakter.";
-    } else {
-        // Periksa apakah username digunakan pengguna lain
-        $cek = mysqli_prepare(
-            $koneksi,
-            "SELECT id_user FROM users
-             WHERE username = ? AND id_user != ?"
-        );
-
-        mysqli_stmt_bind_param($cek, "si", $username, $id_user);
-        mysqli_stmt_execute($cek);
-        mysqli_stmt_store_result($cek);
-
-        if (mysqli_stmt_num_rows($cek) > 0) {
-            $error = "Username sudah digunakan oleh pengguna lain.";
-        }
-
-        mysqli_stmt_close($cek);
-
-        if ($error === '') {
-            if ($password !== '') {
-                // Update sekaligus mengganti password
-                $password_hash = password_hash($password, PASSWORD_DEFAULT);
-
-                $update = mysqli_prepare(
-                    $koneksi,
-                    "UPDATE users
-                     SET username = ?, nama_lengkap = ?, role = ?, password = ?
-                     WHERE id_user = ?"
-                );
-
-                mysqli_stmt_bind_param(
-                    $update,
-                    "ssssi",
-                    $username,
-                    $nama_lengkap,
-                    $role,
-                    $password_hash,
-                    $id_user
-                );
-            } else {
-                // Update tanpa mengganti password
-                $update = mysqli_prepare(
-                    $koneksi,
-                    "UPDATE users
-                     SET username = ?, nama_lengkap = ?, role = ?
-                     WHERE id_user = ?"
-                );
-
-                mysqli_stmt_bind_param(
-                    $update,
-                    "sssi",
-                    $username,
-                    $nama_lengkap,
-                    $role,
-                    $id_user
-                );
-            }
-
-            if (mysqli_stmt_execute($update)) {
-                mysqli_stmt_close($update);
-                header("Location: index.php?pesan=edit");
-                exit;
-            } else {
-                $error = "Gagal memperbarui data pengguna.";
-            }
-
-            mysqli_stmt_close($update);
-        }
+    // Cek duplikasi username milik user lain
+    $cek_user = mysqli_query($koneksi, "SELECT id_user FROM users WHERE username = '$username' AND id_user != '$id'");
+    if (mysqli_num_rows($cek_user) > 0) {
+        echo "<script>alert('Username sudah dipakai akun lain!'); window.history.back();</script>";
+        exit;
     }
 
-    // Pertahankan input jika validasi gagal
-    $user['username'] = $username;
-    $user['nama_lengkap'] = $nama_lengkap;
-    $user['role'] = $role;
-}
+    // Jika password diisi, update dengan hash baru; jika kosong, pertahankan password lama
+    if (!empty($password)) {
+        $password_hash = password_hash($password, PASSWORD_BCRYPT);
+        $update = mysqli_query($koneksi, "UPDATE users SET 
+                                          username = '$username',
+                                          password = '$password_hash',
+                                          nama_lengkap = '$nama_lengkap',
+                                          role = '$role'
+                                          WHERE id_user = '$id'");
+    } else {
+        $update = mysqli_query($koneksi, "UPDATE users SET 
+                                          username = '$username',
+                                          nama_lengkap = '$nama_lengkap',
+                                          role = '$role'
+                                          WHERE id_user = '$id'");
+    }
 
-function aman($data) {
-    return htmlspecialchars((string) $data, ENT_QUOTES, 'UTF-8');
+    if ($update) {
+        echo "<script>alert('Data user berhasil diperbarui!'); window.location='index.php';</script>";
+    } else {
+        echo "<script>alert('Gagal memperbarui data user!'); window.location='index.php';</script>";
+    }
+    exit;
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Pengguna - Log Ternak K04</title>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-pencil-square me-2"></i>Edit Data User</h2>
+    <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
+</div>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
-</head>
-
-<body class="bg-light">
-
-<div class="container mt-5">
-    <div class="card shadow-sm">
-
-        <div class="card-header bg-warning">
-            <h4 class="mb-0">Edit Pengguna</h4>
-        </div>
-
-        <div class="card-body">
-
-            <?php if ($error !== ''): ?>
-                <div class="alert alert-danger">
-                    <?= aman($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <form method="POST">
-
-                <div class="mb-3">
-                    <label class="form-label">Username</label>
-                    <input type="text"
-                           name="username"
-                           class="form-control"
-                           maxlength="50"
-                           value="<?= aman($user['username']); ?>"
-                           required>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST" action="">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Nama Lengkap <span class="text-danger">*</span></label>
+                    <input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap']); ?>" required>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Nama Lengkap</label>
-                    <input type="text"
-                           name="nama_lengkap"
-                           class="form-control"
-                           maxlength="100"
-                           value="<?= aman($user['nama_lengkap']); ?>"
-                           required>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Username <span class="text-danger">*</span></label>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($data['username']); ?>" required>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Password Baru</label>
-                    <input type="password"
-                           name="password"
-                           class="form-control"
-                           minlength="8"
-                           placeholder="Kosongkan jika tidak ingin mengganti password">
-                    <small class="text-muted">
-                        Isi minimal 8 karakter jika ingin mengganti password.
-                    </small>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Password Baru <small class="text-muted fw-normal">(Kosongkan jika tidak diubah)</small></label>
+                    <div class="input-group">
+                        <input type="password" name="password" id="password" class="form-control" placeholder="Isi hanya jika ingin mengganti password" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()" title="Lihat/Sembunyikan Password">
+                            <i class="bi bi-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Role</label>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Role / Hak Akses <span class="text-danger">*</span></label>
                     <select name="role" class="form-select" required>
-                        <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : ''; ?>>
-                            Admin
-                        </option>
-                        <option value="peternak" <?= $user['role'] === 'peternak' ? 'selected' : ''; ?>>
-                            Peternak
-                        </option>
-                        <option value="dokter" <?= $user['role'] === 'dokter' ? 'selected' : ''; ?>>
-                            Dokter
-                        </option>
+                        <option value="admin" <?= $data['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                        <option value="peternak" <?= $data['role'] === 'peternak' ? 'selected' : ''; ?>>Peternak</option>
+                        <option value="dokter" <?= $data['role'] === 'dokter' ? 'selected' : ''; ?>>Dokter</option>
                     </select>
                 </div>
+            </div>
 
-                <button type="submit" class="btn btn-warning">
-                    Simpan Perubahan
-                </button>
-
-                <a href="index.php" class="btn btn-secondary">
-                    Kembali
-                </a>
-
-            </form>
-
-        </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>Simpan Perubahan</button>
+                <a href="index.php" class="btn btn-outline-secondary ms-1">Batal</a>
+            </div>
+        </form>
     </div>
 </div>
 
-</body>
-</html>
+<script>
+function togglePassword() {
+    const password = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    if (password.type === 'password') {
+        password.type = 'text';
+        eyeIcon.classList.remove('bi-eye');
+        eyeIcon.classList.add('bi-eye-slash');
+    } else {
+        password.type = 'password';
+        eyeIcon.classList.remove('bi-eye-slash');
+        eyeIcon.classList.add('bi-eye');
+    }
+}
+</script>
+
+<?php include '../../views/footer.php'; ?>

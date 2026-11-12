@@ -1,4 +1,3 @@
-
 <?php
 // ==========================================
 // 1. KONFIGURASI ERROR
@@ -20,8 +19,6 @@ if (session_status() === PHP_SESSION_NONE) {
 // 3. KONEKSI DATABASE
 // ==========================================
 require_once __DIR__ . '/config/koneksi.php';
-
-
 
 // Pastikan koneksi tersedia
 if (!isset($koneksi) || !($koneksi instanceof mysqli)) {
@@ -58,8 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
 
-            // Ambil data pengguna berdasarkan username.
-            // SELECT * menghindari asumsi nama kolom ID.
+            // Ambil data pengguna berdasarkan username
             $stmt = mysqli_prepare(
                 $koneksi,
                 "SELECT * FROM users WHERE username = ? LIMIT 1"
@@ -76,8 +72,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // ==========================================
             // 7. VALIDASI USERNAME DAN PASSWORD
             // ==========================================
-            if ($user && isset($user['password']) &&
-                password_verify($password, $user['password'])) {
+            // Mendukung hash Bcrypt (password_hash PHP) maupun SHA2-256 (MySQL)
+            $is_valid_password = false;
+            if ($user && isset($user['password'])) {
+                $is_valid_password = password_verify($password, $user['password'])
+                    || hash('sha256', $password) === $user['password'];
+            }
+
+            if ($is_valid_password) {
 
                 // Role yang diperbolehkan
                 $allowed_roles = [
@@ -111,12 +113,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ?? $user['id']
                         ?? null;
 
+                    // Simpan format array bertingkat
                     $_SESSION['user'] = [
                         'id'           => $user_id,
                         'username'     => $user['username'],
                         'nama_lengkap' => $user['nama_lengkap'],
                         'role'         => $role
                     ];
+
+                    // Simpan juga format langsung agar cocok dengan index.php / modul lain
+                    $_SESSION['id_user']      = $user_id;
+                    $_SESSION['username']     = $user['username'];
+                    $_SESSION['nama_lengkap'] = $user['nama_lengkap'];
+                    $_SESSION['role']         = $role;
 
                     // ==========================================
                     // 9. REDIRECT KE DASHBOARD
@@ -134,20 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (mysqli_sql_exception $e) {
 
             error_log("Login database error: " . $e->getMessage());
-
             $error = "Terjadi kesalahan database. Periksa konfigurasi dan struktur tabel users.";
 
         } catch (Throwable $e) {
 
             error_log("Login system error: " . $e->getMessage());
-
             $error = "Terjadi kesalahan sistem. Silakan periksa konfigurasi aplikasi.";
 
         }
     }
 }
-$pesan_logout = '';
 
+$pesan_logout = '';
 if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
     $pesan_logout = 'Anda berhasil logout. Silakan login kembali.';
 }
@@ -158,30 +165,18 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
 <head>
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Log Ternak K04</title>
 
     <!-- Bootstrap CSS -->
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Bootstrap Icons -->
-    <link
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <style>
-
         body {
-            background: linear-gradient(
-                135deg,
-                #e8f5e9,
-                #f8f9fa
-            );
+            background: linear-gradient(135deg, #e8f5e9, #f8f9fa);
             min-height: 100vh;
         }
 
@@ -205,9 +200,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
         .btn-login:hover {
             background-color: #146c43;
         }
-
     </style>
-
 </head>
 
 <body>
@@ -218,36 +211,31 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
         <!-- JUDUL LOGIN -->
         <div class="text-center mb-4">
-
             <i class="bi bi-box-seam login-icon"></i>
-
             <h3 class="fw-bold text-success mt-2">
                 Log Ternak K04
             </h3>
-
             <p class="text-muted">
                 Silakan login ke akun Anda
             </p>
-
         </div>
+
+        <!-- PESAN LOGOUT -->
+        <?php if ($pesan_logout !== ''): ?>
+            <div class="alert alert-success alert-dismissible fade show">
+                <i class="bi bi-check-circle me-2"></i>
+                <?= htmlspecialchars($pesan_logout, ENT_QUOTES, 'UTF-8'); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <!-- PESAN ERROR -->
         <?php if ($error !== ''): ?>
-
             <div class="alert alert-danger alert-dismissible fade show">
-
                 <i class="bi bi-exclamation-circle me-2"></i>
-
                 <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?>
-
-                <button
-                    type="button"
-                    class="btn-close"
-                    data-bs-dismiss="alert">
-                </button>
-
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-
         <?php endif; ?>
 
         <!-- FORM LOGIN -->
@@ -255,17 +243,13 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
             <!-- USERNAME -->
             <div class="mb-3">
-
                 <label class="form-label fw-semibold">
                     Username
                 </label>
-
                 <div class="input-group">
-
                     <span class="input-group-text">
                         <i class="bi bi-person"></i>
                     </span>
-
                     <input
                         type="text"
                         name="username"
@@ -275,24 +259,18 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
                         autocomplete="username"
                         required
                         autofocus>
-
                 </div>
-
             </div>
 
             <!-- PASSWORD -->
             <div class="mb-4">
-
                 <label class="form-label fw-semibold">
                     Password
                 </label>
-
                 <div class="input-group">
-
                     <span class="input-group-text">
                         <i class="bi bi-lock"></i>
                     </span>
-
                     <input
                         type="password"
                         name="password"
@@ -301,41 +279,32 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
                         placeholder="Masukkan password"
                         autocomplete="current-password"
                         required>
-
                     <button
                         class="btn btn-outline-secondary"
                         type="button"
                         onclick="togglePassword()">
-
                         <i class="bi bi-eye" id="eyeIcon"></i>
-
                     </button>
-
                 </div>
-
             </div>
 
             <!-- TOMBOL LOGIN -->
             <button
                 type="submit"
                 class="btn btn-success btn-login w-100 py-2 fw-semibold">
-
                 <i class="bi bi-box-arrow-in-right me-2"></i>
                 Login
-
             </button>
 
         </form>
 
         <!-- FOOTER -->
         <div class="text-center mt-4">
-
             <small class="text-muted">
                 &copy; 2026 Praktikum Pemrograman Web
                 <br>
                 Kelompok 04
             </small>
-
         </div>
 
     </div>
@@ -344,29 +313,20 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
 <!-- JAVASCRIPT -->
 <script>
-
 function togglePassword() {
-
     const password = document.getElementById('password');
     const eyeIcon = document.getElementById('eyeIcon');
 
     if (password.type === 'password') {
-
         password.type = 'text';
-
         eyeIcon.classList.remove('bi-eye');
         eyeIcon.classList.add('bi-eye-slash');
-
     } else {
-
         password.type = 'password';
-
         eyeIcon.classList.remove('bi-eye-slash');
         eyeIcon.classList.add('bi-eye');
-
     }
 }
-
 </script>
 
 <!-- Bootstrap JS -->
