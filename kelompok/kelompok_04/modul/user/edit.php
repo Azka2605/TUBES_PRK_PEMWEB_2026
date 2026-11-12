@@ -1,8 +1,14 @@
 <?php
-include '../../config/koneksi.php';
+// ==========================================
+// 1. PROTEKSI SESSION
+// ==========================================
+$allowed_roles = ['admin'];
+require_once __DIR__ . '/../../includes/auth.check.php';
+
+require_once '../../config/koneksi.php';
 include '../../views/header.php';
 
-// Proteksi khusus admin
+// Proteksi cadangan khusus admin
 $cek_role = strtolower(trim($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? '')));
 if ($cek_role !== 'admin') {
     echo "<script>alert('Akses ditolak! Halaman ini khusus Admin.'); window.location='../../index.php';</script>";
