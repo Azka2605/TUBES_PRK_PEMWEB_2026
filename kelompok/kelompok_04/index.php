@@ -46,27 +46,19 @@ $pemeriksaan_terbaru = mysqli_query(
      ORDER BY lk.tgl_periksa DESC, lk.id_kesehatan DESC
      LIMIT 5"
 );
-$penggunaan_harian = mysqli_query(
+$penggunaan_per_jenis = mysqli_query(
     $koneksi,
-    "SELECT DATE(tgl_pemberian) AS tanggal, SUM(jumlah_kg) AS total_kg
-     FROM log_pemberian_pakan
-     WHERE tgl_pemberian >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-       AND tgl_pemberian < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-     GROUP BY DATE(tgl_pemberian)
-     ORDER BY tanggal"
+    "SELECT p.jenis_pakan, SUM(lp.jumlah_kg) AS total_kg
+     FROM log_pemberian_pakan lp
+     JOIN pakan p ON p.id_pakan = lp.id_pakan
+     GROUP BY p.jenis_pakan
+     ORDER BY total_kg DESC"
 );
-$total_pakan_harian = [];
-while ($pemakaian = mysqli_fetch_assoc($penggunaan_harian)) {
-    $total_pakan_harian[$pemakaian['tanggal']] = (float) $pemakaian['total_kg'];
-}
-$label_pakan_harian = [];
-$data_pakan_harian = [];
-$tanggal = new DateTimeImmutable('today');
-for ($hari = 6; $hari >= 0; $hari--) {
-    $tanggal_harian = $tanggal->modify("-$hari days");
-    $tanggal_key = $tanggal_harian->format('Y-m-d');
-    $label_pakan_harian[] = $tanggal_harian->format('d/m');
-    $data_pakan_harian[] = $total_pakan_harian[$tanggal_key] ?? 0;
+$label_pakan_per_jenis = [];
+$data_pakan_per_jenis = [];
+while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
+    $label_pakan_per_jenis[] = $pemakaian['jenis_pakan'];
+    $data_pakan_per_jenis[] = (float) $pemakaian['total_kg'];
 }
 ?>
 
@@ -241,10 +233,10 @@ for ($hari = 6; $hari >= 0; $hari--) {
         <div class="col-md-6 col-lg-7 mt-4 mt-md-0">
             <div class="card dashboard-panel h-100">
                 <div class="card-header panel-heading">
-                    <h5 class="mb-0">Penggunaan Pakan 7 Hari Terakhir</h5>
+                    <h5 class="mb-0">Penggunaan Pakan per Jenis</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan pakan harian dalam kilogram" role="img"></canvas>
+                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan pakan per jenis dalam kilogram" role="img"></canvas>
                 </div>
             </div>
         </div>
@@ -374,10 +366,10 @@ for ($hari = 6; $hari >= 0; $hari--) {
     new Chart(document.getElementById('chartPakanHarian'), {
         type: 'bar',
         data: {
-            labels: <?= json_encode($label_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            labels: <?= json_encode($label_pakan_per_jenis, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
             datasets: [{
-                label: 'Pakan (kg)',
-                data: <?= json_encode($data_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+                label: 'Penggunaan (kg)',
+                data: <?= json_encode($data_pakan_per_jenis, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
                 backgroundColor: 'rgba(39, 134, 90, 0.78)',
                 borderColor: '#27865a',
                 borderWidth: 1,

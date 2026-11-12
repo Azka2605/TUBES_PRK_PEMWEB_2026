@@ -34,6 +34,20 @@ $stmt = mysqli_prepare($koneksi, $sql_pakan);
 mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
 mysqli_stmt_execute($stmt);
 $pakan = mysqli_stmt_get_result($stmt);
+
+// --- Rekap penggunaan pakan per jenis ---
+$sql_rekap_jenis = "SELECT p.nama_pakan, p.jenis_pakan, COUNT(*) AS jml_pemberian,
+                           SUM(lp.jumlah_kg) AS total_kg
+                    FROM log_pemberian_pakan lp
+                    JOIN pakan p ON p.id_pakan = lp.id_pakan
+                    WHERE DATE(lp.tgl_pemberian) BETWEEN ? AND ?
+                    GROUP BY p.id_pakan, p.nama_pakan, p.jenis_pakan
+                    ORDER BY total_kg DESC";
+$stmt = mysqli_prepare($koneksi, $sql_rekap_jenis);
+mysqli_stmt_bind_param($stmt, 'ss', $dari, $sampai);
+mysqli_stmt_execute($stmt);
+$rekap_jenis = mysqli_stmt_get_result($stmt);
+
 $jumlah_medis = mysqli_num_rows($medis);
 $jumlah_log_pakan = mysqli_num_rows($pakan);
 $total_pakan = 0;
@@ -380,6 +394,56 @@ date_default_timezone_set($zona_waktu_sebelumnya);
                     </tr>
                 <?php endwhile; ?>
                 </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card report-table-card mb-4">
+        <div class="card-header bg-success text-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-1">
+            <h5 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Rekap per Jenis Pakan</h5>
+            <span class="badge text-bg-light text-success print-hide"><?= htmlspecialchars((string)mysqli_num_rows($rekap_jenis), ENT_QUOTES, 'UTF-8') ?> data</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover bg-white align-middle">
+                <thead class="table-success">
+                    <tr>
+                        <th>Pakan</th>
+                        <th>Jenis</th>
+                        <th class="text-end">Jumlah Pemberian</th>
+                        <th class="text-end">Total (kg)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php
+                $total_rekap_pakan = 0;
+                if (mysqli_num_rows($rekap_jenis) === 0):
+                ?>
+                    <tr>
+                        <td colspan="4" class="text-center py-4 text-muted">Tidak ada data pada periode ini.</td>
+                    </tr>
+                <?php else: ?>
+                    <?php while ($r = mysqli_fetch_assoc($rekap_jenis)):
+                        $total_rekap_pakan += (float)$r['total_kg'];
+                        $jumlah_pemberian = (int)$r['jml_pemberian'] . 'x';
+                        $total_jenis_kg = number_format((float)$r['total_kg'], 2, ',', '.');
+                    ?>
+                        <tr>
+                            <td><?= htmlspecialchars($r['nama_pakan'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= htmlspecialchars($r['jenis_pakan'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="text-end"><?= htmlspecialchars($jumlah_pemberian, ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="text-end"><?= htmlspecialchars($total_jenis_kg, ENT_QUOTES, 'UTF-8') ?></td>
+                        </tr>
+                    <?php endwhile; ?>
+                <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="3" class="text-end">Total Keseluruhan</td>
+                        <td class="text-end">
+                            <?= htmlspecialchars(number_format($total_rekap_pakan, 2, ',', '.'), ENT_QUOTES, 'UTF-8') ?>
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
