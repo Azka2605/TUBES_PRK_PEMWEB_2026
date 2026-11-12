@@ -7,7 +7,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // ==========================================
-// 2. MENGAMBIL DATA PENGGUNA
+// 2. MENGAMBIL BASE URL
+// ==========================================
+if (!isset($base_url)) {
+    $base_url = '/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04';
+}
+
+// ==========================================
+// 3. PROTEKSI HALAMAN (WAJIB LOGIN)
+// ==========================================
+if (!isset($_SESSION['user']) && !isset($_SESSION['username'])) {
+    header("Location: " . $base_url . "/login.php");
+    exit;
+}
+
+// ==========================================
+// 4. MENGAMBIL DATA PENGGUNA
 // ==========================================
 $user = $_SESSION['user'] ?? [];
 
@@ -20,21 +35,14 @@ $nama_user = $user['nama_lengkap']
 $role_user = strtolower(trim($user['role'] ?? ($_SESSION['role'] ?? '')));
 
 // ==========================================
-// 3. MENENTUKAN HAK AKSES ROLE
+// 5. MENENTUKAN HAK AKSES ROLE
 // ==========================================
 $is_admin    = ($role_user === 'admin');
 $is_peternak = ($role_user === 'peternak');
 $is_dokter   = ($role_user === 'dokter');
 
 // ==========================================
-// 4. MENGAMBIL BASE URL
-// ==========================================
-if (!isset($base_url)) {
-    $base_url = '/TUBES_PRK_PEMWEB_2026/kelompok/kelompok_04';
-}
-
-// ==========================================
-// 5. MENGAMBIL ALAMAT HALAMAN & MENU AKTIF
+// 6. MENGAMBIL ALAMAT HALAMAN & MENU AKTIF
 // ==========================================
 $current_uri = $_SERVER['REQUEST_URI'] ?? '';
 $bagian_kesehatan_aktif = strpos($current_uri, '/modul/kesehatan/') !== false || strpos($current_uri, '/modul/bobot/') !== false;
