@@ -5,6 +5,25 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
+// Filter log berdasarkan jenis ternak yang menempati kandang.
+$filter_log = isset($_GET['jenis_ternak']) && is_string($_GET['jenis_ternak'])
+    ? $_GET['jenis_ternak']
+    : 'semua';
+$jenis_ternak_valid = [
+    'sapi' => 'Sapi%',
+    'kambing' => 'Kambing%',
+    'ayam' => 'Ayam Petelur%'
+];
+if ($filter_log !== 'semua' && !isset($jenis_ternak_valid[$filter_log])) {
+    $filter_log = 'semua';
+}
+$label_filter_log = [
+    'semua' => 'Semua Ternak',
+    'sapi' => 'Sapi',
+    'kambing' => 'Kambing',
+    'ayam' => 'Ayam Petelur'
+];
+
 // Daftar log pemberian pakan (terbaru di atas)
 $sql = "SELECT lp.id_log_pakan, lp.tgl_pemberian, lp.jumlah_kg,
                p.nama_pakan, p.jenis_pakan, p.satuan,
@@ -12,11 +31,23 @@ $sql = "SELECT lp.id_log_pakan, lp.tgl_pemberian, lp.jumlah_kg,
         FROM log_pemberian_pakan lp
         JOIN pakan p ON p.id_pakan = lp.id_pakan
         JOIN kandang k ON k.id_kandang = lp.id_kandang
-        LEFT JOIN users u ON u.id_user = lp.id_peternak
-        ORDER BY lp.tgl_pemberian DESC";
+        LEFT JOIN users u ON u.id_user = lp.id_peternak";
 $result = false;
 try {
-    $result = mysqli_query($koneksi, $sql);
+    if ($filter_log === 'semua') {
+        $result = mysqli_query($koneksi, $sql . " ORDER BY lp.tgl_pemberian DESC");
+    } else {
+        $sql .= " WHERE EXISTS (
+                      SELECT 1 FROM ternak t
+                      WHERE t.id_kandang = k.id_kandang AND t.jenis_ras LIKE ?
+                  )
+                  ORDER BY lp.tgl_pemberian DESC";
+        $stmt_log = mysqli_prepare($koneksi, $sql);
+        $jenis_ternak = $jenis_ternak_valid[$filter_log];
+        mysqli_stmt_bind_param($stmt_log, 's', $jenis_ternak);
+        mysqli_stmt_execute($stmt_log);
+        $result = mysqli_stmt_get_result($stmt_log);
+    }
     if (!$result) {
         throw new RuntimeException(mysqli_error($koneksi));
     }
@@ -170,7 +201,27 @@ include '../../views/header.php';
     <?php else: ?>
     <div class="card shadow-sm">
         <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Log Pemberian Pakan</h5>
+            <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Log Pemberian Pakan - <?= htmlspecialchars($label_filter_log[$filter_log]) ?></h5>
+        </div>
+        <div class="card-body border-bottom">
+            <div class="nav nav-pills flex-wrap gap-2" aria-label="Filter log berdasarkan jenis ternak">
+                <?php foreach ($label_filter_log as $jenis => $label): ?>
+                    <a href="index.php?jenis_ternak=<?= urlencode($jenis) ?>"
+                       class="nav-link <?= $filter_log === $jenis ? 'active bg-success text-white' : 'text-success' ?>"
+                       <?= $filter_log === $jenis ? 'aria-current="page"' : '' ?>>
+                        <?php if ($jenis === 'sapi'): ?>
+                            <i class="bi bi-clipboard2-pulse me-1" aria-hidden="true"></i>
+                        <?php elseif ($jenis === 'kambing'): ?>
+                            <i class="bi bi-clipboard2-pulse me-1" aria-hidden="true"></i>
+                        <?php elseif ($jenis === 'ayam'): ?>
+                            <i class="bi bi-egg me-1" aria-hidden="true"></i>
+                        <?php else: ?>
+                            <i class="bi bi-grid me-1" aria-hidden="true"></i>
+                        <?php endif; ?>
+                        <?= htmlspecialchars($label) ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-striped table-hover align-middle mb-0">
@@ -190,7 +241,7 @@ include '../../views/header.php';
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <i class="bi bi-inbox display-6 text-muted d-block mb-2" aria-hidden="true"></i>
-                            <p class="text-muted mb-3">Belum ada catatan pemberian pakan.</p>
+                            <p class="text-muted mb-3">Belum ada catatan pemberian pakan untuk <?= htmlspecialchars($label_filter_log[$filter_log]) ?>.</p>
                             <a href="tambah.php" class="btn btn-success btn-sm">
                                 <i class="bi bi-plus-circle me-1"></i>Buat catatan pertama
                             </a>

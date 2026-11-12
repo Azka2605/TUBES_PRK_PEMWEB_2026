@@ -5,30 +5,83 @@ include 'views/header.php';
 // Statistik dashboard
 $total_ternak  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak"))['jml'];
 $ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status_kesehatan = 'Sakit'"))['jml'];
-$ringkasan_ternak = mysqli_fetch_assoc(mysqli_query(
-    $koneksi,
-    "SELECT
-        (SELECT COUNT(*) FROM ternak WHERE status_kesehatan = 'Karantina') AS ternak_karantina,
-        (SELECT AVG(rb.bobot_kg)
-         FROM riwayat_bobot rb
-         WHERE NOT EXISTS (
-             SELECT 1
-             FROM riwayat_bobot rb_terbaru
-             WHERE rb_terbaru.id_ternak = rb.id_ternak
-               AND (
-                   rb_terbaru.tgl_timbang > rb.tgl_timbang
-                   OR (rb_terbaru.tgl_timbang = rb.tgl_timbang AND rb_terbaru.id_bobot > rb.id_bobot)
-               )
-         )) AS rata_bobot_terbaru"
-));
 $total_kandang = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM kandang"))['jml'];
+$kategori_pakan = [];
+$hasil_kategori_pakan = mysqli_query($koneksi, "SELECT DISTINCT jenis_pakan FROM pakan WHERE jenis_pakan IS NOT NULL AND jenis_pakan <> '' ORDER BY jenis_pakan");
+while ($kategori = mysqli_fetch_assoc($hasil_kategori_pakan)) {
+    $kategori_pakan[] = $kategori['jenis_pakan'];
+}
+$filter_stok_pakan = isset($_GET['jenis_stok']) && is_string($_GET['jenis_stok'])
+    ? $_GET['jenis_stok']
+    : 'semua';
+if ($filter_stok_pakan !== 'semua' && !in_array($filter_stok_pakan, $kategori_pakan, true)) {
+    $filter_stok_pakan = 'semua';
+}
+if ($filter_stok_pakan === 'semua') {
+    $ringkasan_stok = mysqli_query(
+        $koneksi,
+        "SELECT COALESCE(SUM(stok_kg), 0) AS total,
+                COUNT(IF(stok_kg < 10, 1, NULL)) AS menipis
+         FROM pakan"
+    );
+} else {
+    $ringkasan_stok = mysqli_prepare(
+        $koneksi,
+        "SELECT COALESCE(SUM(stok_kg), 0) AS total,
+                COUNT(IF(stok_kg < 10, 1, NULL)) AS menipis
+         FROM pakan
+         WHERE jenis_pakan = ?"
+    );
+    mysqli_stmt_bind_param($ringkasan_stok, 's', $filter_stok_pakan);
+    mysqli_stmt_execute($ringkasan_stok);
+    $ringkasan_stok = mysqli_stmt_get_result($ringkasan_stok);
+}
+$ringkasan_stok = mysqli_fetch_assoc($ringkasan_stok);
+$total_stok_pakan = (float) $ringkasan_stok['total'];
+$jumlah_stok_menipis = (int) $ringkasan_stok['menipis'];
+$opsi_filter_stok = ['semua' => 'Semua kategori'];
+foreach ($kategori_pakan as $kategori) {
+    $opsi_filter_stok[$kategori] = $kategori;
+}
 $stok_menipis  = mysqli_query($koneksi, "SELECT nama_pakan, stok_kg FROM pakan WHERE stok_kg < 10 ORDER BY stok_kg ASC");
 $jml_menipis   = mysqli_num_rows($stok_menipis);
 $distribusi_status = ['Sehat' => 0, 'Sakit' => 0, 'Karantina' => 0];
-$hasil_status = mysqli_query($koneksi, "SELECT status_kesehatan, COUNT(*) AS jumlah FROM ternak GROUP BY status_kesehatan");
+$filter_status_jenis = isset($_GET['jenis_status']) && is_string($_GET['jenis_status'])
+    ? $_GET['jenis_status']
+    : 'semua';
+$jenis_status_valid = [
+    'sapi' => 'Sapi%',
+    'kambing' => 'Kambing%',
+    'ayam' => 'Ayam Petelur%'
+];
+if ($filter_status_jenis !== 'semua' && !isset($jenis_status_valid[$filter_status_jenis])) {
+    $filter_status_jenis = 'semua';
+}
+$label_status_jenis = [
+    'semua' => 'Semua Ternak',
+    'sapi' => 'Sapi',
+    'kambing' => 'Kambing',
+    'ayam' => 'Ayam Petelur'
+];
+if ($filter_status_jenis === 'semua') {
+    $hasil_status = mysqli_query($koneksi, "SELECT status_kesehatan, COUNT(*) AS jumlah FROM ternak GROUP BY status_kesehatan");
+} else {
+    $hasil_status = mysqli_prepare(
+        $koneksi,
+        "SELECT status_kesehatan, COUNT(*) AS jumlah
+         FROM ternak
+         WHERE jenis_ras LIKE ?
+         GROUP BY status_kesehatan"
+    );
+    $jenis_ras_status = $jenis_status_valid[$filter_status_jenis];
+    mysqli_stmt_bind_param($hasil_status, 's', $jenis_ras_status);
+    mysqli_stmt_execute($hasil_status);
+    $hasil_status = mysqli_stmt_get_result($hasil_status);
+}
 while ($status = mysqli_fetch_assoc($hasil_status)) {
     $distribusi_status[$status['status_kesehatan']] = (int) $status['jumlah'];
 }
+
 $ternak_per_kandang = mysqli_query(
     $koneksi,
     "SELECT k.nama_kandang, k.kapasitas, COUNT(t.id_ternak) AS jumlah_ternak
@@ -39,34 +92,104 @@ $ternak_per_kandang = mysqli_query(
 );
 $pemeriksaan_terbaru = mysqli_query(
     $koneksi,
-    "SELECT lk.tgl_periksa, lk.diagnosa, t.tag_number, u.nama_lengkap AS dokter
+    "SELECT lk.tgl_periksa, lk.diagnosa, t.tag_number, t.jenis_ras, u.nama_lengkap AS dokter
      FROM log_kesehatan lk
      JOIN ternak t ON t.id_ternak = lk.id_ternak
      LEFT JOIN users u ON u.id_user = lk.id_dokter
      ORDER BY lk.tgl_periksa DESC, lk.id_kesehatan DESC
      LIMIT 5"
 );
-$penggunaan_harian = mysqli_query(
+$penimbangan_terbaru = mysqli_query(
     $koneksi,
-    "SELECT DATE(tgl_pemberian) AS tanggal, SUM(jumlah_kg) AS total_kg
-     FROM log_pemberian_pakan
-     WHERE tgl_pemberian >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-       AND tgl_pemberian < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
-     GROUP BY DATE(tgl_pemberian)
-     ORDER BY tanggal"
+    "SELECT rb.tgl_timbang, rb.bobot_kg, rb.catatan, t.tag_number, t.jenis_ras
+     FROM riwayat_bobot rb
+     JOIN ternak t ON t.id_ternak = rb.id_ternak
+     ORDER BY rb.tgl_timbang DESC, rb.id_bobot DESC
+     LIMIT 5"
 );
-$total_pakan_harian = [];
-while ($pemakaian = mysqli_fetch_assoc($penggunaan_harian)) {
-    $total_pakan_harian[$pemakaian['tanggal']] = (float) $pemakaian['total_kg'];
+$zona_waktu = new DateTimeZone('Asia/Jakarta');
+$hari_ini = new DateTimeImmutable('today', $zona_waktu);
+$tanggal_awal_default = $hari_ini->modify('first day of this month');
+$tanggal_akhir_default = $hari_ini->modify('last day of this month');
+if (isset($_GET['periode_pakan']) && $_GET['periode_pakan'] === 'mingguan') {
+    $tanggal_awal_default = $hari_ini->modify('monday this week');
+    $tanggal_akhir_default = $tanggal_awal_default->modify('+6 days');
 }
-$label_pakan_harian = [];
-$data_pakan_harian = [];
-$tanggal = new DateTimeImmutable('today');
-for ($hari = 6; $hari >= 0; $hari--) {
-    $tanggal_harian = $tanggal->modify("-$hari days");
-    $tanggal_key = $tanggal_harian->format('Y-m-d');
-    $label_pakan_harian[] = $tanggal_harian->format('d/m');
-    $data_pakan_harian[] = $total_pakan_harian[$tanggal_key] ?? 0;
+$dari_pakan = isset($_GET['dari_pakan']) && is_string($_GET['dari_pakan'])
+    ? $_GET['dari_pakan']
+    : $tanggal_awal_default->format('Y-m-d');
+$sampai_pakan = isset($_GET['sampai_pakan']) && is_string($_GET['sampai_pakan'])
+    ? $_GET['sampai_pakan']
+    : $tanggal_akhir_default->format('Y-m-d');
+$tanggal_awal = DateTimeImmutable::createFromFormat('!Y-m-d', $dari_pakan, $zona_waktu);
+$tanggal_akhir = DateTimeImmutable::createFromFormat('!Y-m-d', $sampai_pakan, $zona_waktu);
+if (
+    !$tanggal_awal || $tanggal_awal->format('Y-m-d') !== $dari_pakan
+    || !$tanggal_akhir || $tanggal_akhir->format('Y-m-d') !== $sampai_pakan
+    || $tanggal_awal > $tanggal_akhir
+) {
+    $tanggal_awal = $tanggal_awal_default;
+    $tanggal_akhir = $tanggal_akhir_default;
+    $dari_pakan = $tanggal_awal->format('Y-m-d');
+    $sampai_pakan = $tanggal_akhir->format('Y-m-d');
+}
+$awal_pakan_sql = $tanggal_awal->format('Y-m-d 00:00:00');
+$akhir_pakan_sql = $tanggal_akhir->modify('+1 day')->format('Y-m-d 00:00:00');
+$label_periode_pakan = $tanggal_awal->format('d/m/Y') . ' - ' . $tanggal_akhir->format('d/m/Y');
+// Satu batang per nama pakan; EXISTS mengelompokkan pemakaian kandang tanpa menggandakan jumlah per ekor.
+$sql_pakan_per_jenis = "SELECT p.id_pakan, p.nama_pakan, p.peruntukan,
+                               COALESCE(SUM(lp.jumlah_kg), 0) AS total_kg,
+                               COALESCE(SUM(CASE WHEN EXISTS (
+                                   SELECT 1 FROM ternak t
+                                   WHERE t.id_kandang = lp.id_kandang AND t.jenis_ras LIKE 'Sapi%'
+                               ) THEN lp.jumlah_kg ELSE 0 END), 0) AS total_sapi,
+                               COALESCE(SUM(CASE WHEN EXISTS (
+                                   SELECT 1 FROM ternak t
+                                   WHERE t.id_kandang = lp.id_kandang AND t.jenis_ras LIKE 'Kambing%'
+                               ) THEN lp.jumlah_kg ELSE 0 END), 0) AS total_kambing,
+                               COALESCE(SUM(CASE WHEN EXISTS (
+                                   SELECT 1 FROM ternak t
+                                   WHERE t.id_kandang = lp.id_kandang AND t.jenis_ras LIKE 'Ayam Petelur%'
+                               ) THEN lp.jumlah_kg ELSE 0 END), 0) AS total_ayam
+                        FROM pakan p
+                        LEFT JOIN log_pemberian_pakan lp
+                            ON lp.id_pakan = p.id_pakan
+                            AND lp.tgl_pemberian >= ? AND lp.tgl_pemberian < ?
+                        GROUP BY p.id_pakan, p.nama_pakan, p.peruntukan
+                        ORDER BY p.nama_pakan";
+$stmt_pakan_per_jenis = mysqli_prepare($koneksi, $sql_pakan_per_jenis);
+mysqli_stmt_bind_param($stmt_pakan_per_jenis, 'ss', $awal_pakan_sql, $akhir_pakan_sql);
+mysqli_stmt_execute($stmt_pakan_per_jenis);
+$penggunaan_per_jenis = mysqli_stmt_get_result($stmt_pakan_per_jenis);
+$label_pakan_per_jenis = [];
+$data_pakan_per_jenis = [];
+$pengguna_pakan_per_item = [];
+while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
+    $label_pakan_per_jenis[] = $pemakaian['nama_pakan'];
+    $data_pakan_per_jenis[] = (float) $pemakaian['total_kg'];
+    $pengguna = [];
+    foreach ([
+        'Sapi' => (float) $pemakaian['total_sapi'],
+        'Kambing' => (float) $pemakaian['total_kambing'],
+        'Ayam Petelur' => (float) $pemakaian['total_ayam']
+    ] as $jenis_ternak => $jumlah_kg) {
+        if ($jumlah_kg > 0) {
+            $pengguna[] = [
+                'jenis' => $jenis_ternak,
+                'jumlah_kg' => $jumlah_kg
+            ];
+        }
+    }
+    $pengguna_pakan_per_item[] = $pengguna;
+}
+$total_pakan_periode = array_sum($data_pakan_per_jenis);
+$palet_warna_pakan = [
+    '#27865a', '#d2a23b', '#4a8173', '#bd5b5b', '#4c6e96',
+    '#846296', '#ca7d35', '#3f8294', '#917556'
+];
+$warna_pakan_per_item = [];
+foreach ($label_pakan_per_jenis as $indeks => $label) {
+    $warna_pakan_per_item[] = $palet_warna_pakan[$indeks % count($palet_warna_pakan)];
 }
 ?>
 
@@ -143,6 +266,45 @@ for ($hari = 6; $hari >= 0; $hari--) {
         background: #fff9eb;
         color: #70551d;
     }
+
+    .dashboard-page .feed-chart-period,
+    .dashboard-page .feed-chart-period .form-label,
+    .dashboard-page .feed-chart-period .form-control,
+    .dashboard-page .feed-chart-summary {
+        font-family: inherit;
+    }
+
+    .dashboard-page .feed-chart-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem 0.8rem;
+        list-style: none;
+        margin: 0.25rem 0 0.75rem;
+        padding: 0;
+    }
+
+    .dashboard-page .feed-chart-legend li {
+        align-items: center;
+        color: #64736a;
+        display: inline-flex;
+        font-size: 0.72rem;
+        gap: 0.35rem;
+        line-height: 1.2;
+    }
+
+    .dashboard-page .feed-chart-legend-swatch {
+        border-radius: 0.12rem;
+        display: inline-block;
+        flex: 0 0 0.65rem;
+        height: 0.65rem;
+        width: 0.65rem;
+    }
+
+    .dashboard-page .feed-chart-period .form-control:focus,
+    .dashboard-page .feed-chart-control:focus {
+        border-color: #86b7a0;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.2);
+    }
 </style>
 
 <div class="container-fluid my-3 dashboard-page">
@@ -189,39 +351,43 @@ for ($hari = 6; $hari >= 0; $hari--) {
             <div class="card stat-card stat-warning h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="card-title">Stok Pakan &lt; 10 Kg</h6>
-                        <h2 class="mb-0"><?= $jml_menipis ?> jenis</h2>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="card-title mb-0">Total Stok Pakan</h6>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-success py-0 px-1" type="button"
+                                        data-bs-toggle="dropdown" aria-expanded="false"
+                                        aria-label="Pilih kategori pakan">
+                                    <i class="bi bi-funnel" aria-hidden="true"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <?php foreach ($opsi_filter_stok as $nilai_kategori => $label_kategori): ?>
+                                        <?php
+                                        $parameter_stok = [
+                                            'jenis_stok' => $nilai_kategori,
+                                            'jenis_status' => $filter_status_jenis,
+                                            'dari_pakan' => $dari_pakan,
+                                            'sampai_pakan' => $sampai_pakan
+                                        ];
+                                        ?>
+                                        <li>
+                                            <a class="dropdown-item <?= $filter_stok_pakan === $nilai_kategori ? 'active' : '' ?>"
+                                               href="?<?= htmlspecialchars(http_build_query($parameter_stok), ENT_QUOTES, 'UTF-8') ?>">
+                                                <?= htmlspecialchars($label_kategori, ENT_QUOTES, 'UTF-8') ?>
+                                            </a>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="mb-0"><?= number_format($total_stok_pakan, 2, ',', '.') ?> kg</h2>
+                            <small class="text-muted">
+                                <?= $filter_stok_pakan === 'semua' ? 'Semua kategori' : htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>
+                                · <?= $jumlah_stok_menipis ?> jenis di bawah 10 kg
+                            </small>
+                        </div>
                     </div>
                     <span class="stat-icon"><i class="bi bi-basket" aria-hidden="true"></i></span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row g-3 mt-1">
-        <div class="col-md-6">
-            <div class="card stat-card stat-warning h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Ternak Karantina</h6>
-                        <h2 class="mb-0"><?= (int) $ringkasan_ternak['ternak_karantina'] ?></h2>
-                    </div>
-                    <span class="stat-icon"><i class="bi bi-shield-plus" aria-hidden="true"></i></span>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card stat-card stat-info h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">Rata-rata Bobot Terbaru</h6>
-                        <h2 class="mb-0">
-                            <?= $ringkasan_ternak['rata_bobot_terbaru'] !== null
-                                ? number_format((float) $ringkasan_ternak['rata_bobot_terbaru'], 2, ',', '.') . ' kg'
-                                : '-' ?>
-                        </h2>
-                    </div>
-                    <span class="stat-icon"><i class="bi bi-speedometer2" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
@@ -231,20 +397,73 @@ for ($hari = 6; $hari >= 0; $hari--) {
         <div class="col-md-6 col-lg-5">
             <div class="card dashboard-panel h-100">
                 <div class="card-header panel-heading">
-                    <h5 class="mb-0">Distribusi Status Ternak</h5>
+                    <h5 class="mb-0">Distribusi Status - <?= htmlspecialchars($label_status_jenis[$filter_status_jenis], ENT_QUOTES, 'UTF-8') ?></h5>
                 </div>
                 <div class="card-body">
                     <canvas id="chartStatusTernak" aria-label="Chart distribusi status ternak" role="img"></canvas>
+                    <form method="get" class="mt-3">
+                        <input type="hidden" name="dari_pakan" value="<?= htmlspecialchars($dari_pakan, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="sampai_pakan" value="<?= htmlspecialchars($sampai_pakan, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="jenis_stok" value="<?= htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>">
+                        <label for="jenis_status" class="form-label fw-semibold">Jenis ternak</label>
+                        <div class="input-group">
+                            <select id="jenis_status" name="jenis_status" class="form-select feed-chart-control">
+                                <?php foreach ($label_status_jenis as $jenis => $label): ?>
+                                    <option value="<?= htmlspecialchars($jenis, ENT_QUOTES, 'UTF-8') ?>"
+                                        <?= $filter_status_jenis === $jenis ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="submit" class="btn btn-outline-success">Tampilkan</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
         <div class="col-md-6 col-lg-7 mt-4 mt-md-0">
             <div class="card dashboard-panel h-100">
                 <div class="card-header panel-heading">
-                    <h5 class="mb-0">Penggunaan Pakan 7 Hari Terakhir</h5>
+                    <h5 class="mb-0">Penggunaan Pakan per Nama Pakan</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan pakan harian dalam kilogram" role="img"></canvas>
+                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan untuk setiap nama pakan dan jenis ternak yang menggunakannya pada periode terpilih" role="img"></canvas>
+                    <ul class="feed-chart-legend" aria-label="Keterangan warna jenis pakan">
+                        <?php foreach ($label_pakan_per_jenis as $indeks => $nama_pakan): ?>
+                            <li>
+                                <span class="feed-chart-legend-swatch"
+                                      style="background-color: <?= htmlspecialchars($warna_pakan_per_item[$indeks], ENT_QUOTES, 'UTF-8') ?>"
+                                      aria-hidden="true"></span>
+                                <?= htmlspecialchars($nama_pakan, ENT_QUOTES, 'UTF-8') ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                    <form method="get" class="row g-3 align-items-end mt-2 feed-chart-period">
+                        <input type="hidden" name="jenis_status" value="<?= htmlspecialchars($filter_status_jenis, ENT_QUOTES, 'UTF-8') ?>">
+                        <input type="hidden" name="jenis_stok" value="<?= htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>">
+                        <div class="col-12 col-sm-6">
+                            <label for="dari_pakan" class="form-label fw-semibold">Dari</label>
+                            <input type="date" id="dari_pakan" name="dari_pakan"
+                                   value="<?= htmlspecialchars($dari_pakan, ENT_QUOTES, 'UTF-8') ?>"
+                                   class="form-control" required>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <label for="sampai_pakan" class="form-label fw-semibold">Sampai</label>
+                            <input type="date" id="sampai_pakan" name="sampai_pakan"
+                                   value="<?= htmlspecialchars($sampai_pakan, ENT_QUOTES, 'UTF-8') ?>"
+                                   class="form-control" required>
+                        </div>
+                        <div class="col-12 d-flex flex-wrap gap-2">
+                            <button type="submit" class="btn btn-outline-success">
+                                <i class="bi bi-calendar-range me-1" aria-hidden="true"></i>Tampilkan
+                            </button>
+                            <a href="index.php" class="btn btn-outline-secondary">Reset</a>
+                        </div>
+                    </form>
+                    <p class="text-muted small mt-3 mb-0 feed-chart-summary">
+                        Periode grafik: <strong><?= htmlspecialchars($label_periode_pakan, ENT_QUOTES, 'UTF-8') ?></strong>.
+                        Total pemakaian pakan: <strong><?= number_format($total_pakan_periode, 2, ',', '.') ?> kg</strong>
+                    </p>
                 </div>
             </div>
         </div>
@@ -311,6 +530,7 @@ for ($hari = 6; $hari >= 0; $hari--) {
                     <tr>
                         <th>Tanggal</th>
                         <th>No. Tag</th>
+                        <th>Jenis / Ras</th>
                         <th>Diagnosa</th>
                         <th>Dokter</th>
                     </tr>
@@ -321,13 +541,51 @@ for ($hari = 6; $hari >= 0; $hari--) {
                             <tr>
                                 <td><?= date('d/m/Y', strtotime($pemeriksaan['tgl_periksa'])) ?></td>
                                 <td><?= htmlspecialchars($pemeriksaan['tag_number']) ?></td>
+                                <td><?= htmlspecialchars($pemeriksaan['jenis_ras']) ?></td>
                                 <td><?= htmlspecialchars($pemeriksaan['diagnosa']) ?></td>
                                 <td><?= htmlspecialchars($pemeriksaan['dokter'] ?? '-') ?></td>
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="4" class="text-center text-muted">Belum ada pemeriksaan kesehatan.</td>
+                            <td colspan="5" class="text-center text-muted">Belum ada pemeriksaan kesehatan.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card dashboard-panel mt-4">
+        <div class="card-header panel-heading d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">5 Penimbangan Bobot Terbaru</h5>
+            <a href="modul/bobot/index.php" class="btn btn-outline-success btn-sm">Lihat Semua</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>No. Tag</th>
+                        <th>Jenis / Ras</th>
+                        <th class="text-end">Bobot (kg)</th>
+                        <th>Catatan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ($penimbangan_terbaru && mysqli_num_rows($penimbangan_terbaru) > 0): ?>
+                        <?php while ($penimbangan = mysqli_fetch_assoc($penimbangan_terbaru)): ?>
+                            <tr>
+                                <td><?= date('d/m/Y', strtotime($penimbangan['tgl_timbang'])) ?></td>
+                                <td><strong><?= htmlspecialchars($penimbangan['tag_number']) ?></strong></td>
+                                <td><?= htmlspecialchars($penimbangan['jenis_ras']) ?></td>
+                                <td class="text-end text-nowrap"><?= number_format((float)$penimbangan['bobot_kg'], 2, ',', '.') ?></td>
+                                <td><?= htmlspecialchars($penimbangan['catatan'] ?? '-') ?></td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">Belum ada data penimbangan.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -374,23 +632,61 @@ for ($hari = 6; $hari >= 0; $hari--) {
     new Chart(document.getElementById('chartPakanHarian'), {
         type: 'bar',
         data: {
-            labels: <?= json_encode($label_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+            labels: <?= json_encode($label_pakan_per_jenis, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
             datasets: [{
-                label: 'Pakan (kg)',
-                data: <?= json_encode($data_pakan_harian, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
-                backgroundColor: 'rgba(39, 134, 90, 0.78)',
-                borderColor: '#27865a',
+                label: 'Penggunaan (kg)',
+                data: <?= json_encode($data_pakan_per_jenis, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+                backgroundColor: <?= json_encode($warna_pakan_per_item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
+                borderColor: <?= json_encode($warna_pakan_per_item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
                 borderWidth: 1,
-                borderRadius: 6,
-                maxBarThickness: 42
+                borderRadius: 6
             }]
         },
         options: {
             responsive: true,
+            font: {
+                family: getComputedStyle(document.body).fontFamily
+            },
+            datasets: {
+                bar: {
+                    categoryPercentage: 0.72,
+                    barPercentage: 0.82,
+                    maxBarThickness: 32
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: true,
                     title: { display: true, text: 'Kilogram' }
+                },
+                x: {
+                    ticks: { display: false },
+                    grid: { display: false }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Total: ' + Number(context.raw).toLocaleString('id-ID', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }) + ' kg';
+                        },
+                        afterLabel: function(context) {
+                            const pengguna = <?= json_encode($pengguna_pakan_per_item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>[context.dataIndex];
+                            if (!pengguna || pengguna.length === 0) {
+                                return 'Belum ada ternak yang menggunakan pada periode ini';
+                            }
+                            return pengguna.map(function(item) {
+                                return item.jenis + ': ' + Number(item.jumlah_kg).toLocaleString('id-ID', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2
+                                }) + ' kg';
+                            });
+                        }
+                    }
                 }
             }
         }
