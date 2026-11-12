@@ -66,10 +66,23 @@ $current_uri = $_SERVER['REQUEST_URI'];
             </li>
           </ul>
         </li>
-        <li class="nav-item">
-          <a class="nav-link <?= (strpos($current_uri, '/modul/pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/pakan/index.php">
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle <?= (strpos($current_uri, '/modul/pakan/') !== false || strpos($current_uri, '/modul/log_pakan/') !== false) ? 'active' : ''; ?>" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-basket me-1"></i> Pakan
           </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownPakan">
+            <li>
+              <a class="dropdown-item <?= (strpos($current_uri, '/modul/pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/pakan/index.php">
+                <i class="bi bi-box-seam me-2"></i>Data Pakan Ternak
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item <?= (strpos($current_uri, '/modul/log_pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/log_pakan/index.php">
+                <i class="bi bi-journal-text me-2"></i>History Pemberian Pakan
+              </a>
+            </li>
+          </ul>
         </li>
         <li class="nav-item">
           <a class="nav-link <?= (strpos($current_uri, '/modul/laporan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/laporan/index.php">
