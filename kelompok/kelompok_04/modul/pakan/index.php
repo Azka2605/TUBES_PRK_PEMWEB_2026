@@ -6,7 +6,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-box-seam me-2"></i>Master Data Pakan</h2>
+    <h2><i class="bi bi-box-seam me-2"></i>Data Pakan Ternak</h2>
     <a href="tambah.php" class="btn btn-success"><i class="bi bi-plus-circle me-1"></i>Tambah Pakan</a>
 </div>
 

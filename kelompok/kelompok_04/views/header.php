@@ -79,7 +79,7 @@ $current_uri = $_SERVER['REQUEST_URI'];
             </li>
             <li>
               <a class="dropdown-item <?= (strpos($current_uri, '/modul/log_pakan/') !== false) ? 'active' : ''; ?>" href="<?= $base_url; ?>/modul/log_pakan/index.php">
-                <i class="bi bi-journal-text me-2"></i>History Pemberian Pakan
+                <i class="bi bi-journal-text me-2"></i>Log Pemberian Pakan
               </a>
             </li>
           </ul>
