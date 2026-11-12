@@ -184,8 +184,8 @@ while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
 }
 $total_pakan_periode = array_sum($data_pakan_per_jenis);
 $palet_warna_pakan = [
-    '#27865a', '#d2a23b', '#4a8173', '#bd5b5b', '#4c6e96',
-    '#846296', '#ca7d35', '#3f8294', '#917556'
+    '#198754', '#146c43', '#157347', '#2f9368', '#479f76',
+    '#0f5132', '#5aab84', '#267a55', '#3d8b63'
 ];
 $warna_pakan_per_item = [];
 foreach ($label_pakan_per_jenis as $indeks => $label) {
@@ -195,29 +195,29 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
 
 <style>
     .dashboard-page {
-        --dashboard-green-dark: #146c43;
-        --dashboard-green-soft: #eaf5ee;
+        --dashboard-green-dark: var(--brand-dark);
+        --dashboard-green-soft: var(--brand-soft);
     }
 
     .dashboard-page .dashboard-title {
-        color: #234b36;
+        color: var(--bs-body-color);
     }
 
     .dashboard-page .stat-card,
     .dashboard-page .dashboard-panel {
-        border: 1px solid #e4ece6;
+        border: 1px solid var(--bs-border-color);
         border-radius: 0.85rem;
-        box-shadow: 0 0.25rem 0.85rem rgba(35, 75, 54, 0.07);
+        box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.075);
     }
 
     .dashboard-page .stat-card {
         border-left: 4px solid var(--stat-color);
         background: #fff;
-        color: #234b36;
+        color: var(--bs-body-color);
     }
 
     .dashboard-page .stat-card .card-title {
-        color: #6c7d72;
+        color: var(--bs-secondary-color);
         font-size: 0.85rem;
         font-weight: 600;
     }
@@ -238,21 +238,21 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
         font-size: 1.35rem;
     }
 
-    .dashboard-page .stat-primary { --stat-color: #27865a; --stat-soft: #eaf5ee; }
-    .dashboard-page .stat-danger { --stat-color: #bd5b5b; --stat-soft: #f9eded; }
-    .dashboard-page .stat-warning { --stat-color: #a77a22; --stat-soft: #fbf4e3; }
-    .dashboard-page .stat-info { --stat-color: #4a8173; --stat-soft: #eaf3f1; }
+    .dashboard-page .stat-primary { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
+    .dashboard-page .stat-danger { --stat-color: #dc3545; --stat-soft: #f8d7da; }
+    .dashboard-page .stat-warning { --stat-color: #ffc107; --stat-soft: #fff3cd; }
+    .dashboard-page .stat-info { --stat-color: #0dcaf0; --stat-soft: #cff4fc; }
 
     .dashboard-page .panel-heading {
-        border-bottom: 1px solid #dcebe1;
+        border-bottom: 1px solid var(--bs-border-color);
         border-radius: 0.85rem 0.85rem 0 0;
         background: var(--dashboard-green-soft);
         color: var(--dashboard-green-dark);
     }
 
     .dashboard-page .table thead th {
-        background: #f3f8f4;
-        color: #345b44;
+        background: var(--brand-soft);
+        color: var(--brand-dark);
         font-weight: 600;
         white-space: nowrap;
     }
@@ -285,7 +285,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
 
     .dashboard-page .feed-chart-legend li {
         align-items: center;
-        color: #64736a;
+        color: var(--bs-secondary-color);
         display: inline-flex;
         font-size: 0.72rem;
         gap: 0.35rem;
@@ -302,7 +302,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
 
     .dashboard-page .feed-chart-period .form-control:focus,
     .dashboard-page .feed-chart-control:focus {
-        border-color: #86b7a0;
+        border-color: var(--brand);
         box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.2);
     }
 </style>
@@ -615,7 +615,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
             labels: ['Sehat', 'Sakit', 'Karantina'],
             datasets: [{
                 data: dataStatusTernak,
-                backgroundColor: ['#27865a', '#bd5b5b', '#d2a23b'],
+                backgroundColor: ['#198754', '#dc3545', '#ffc107'],
                 borderColor: '#fff',
                 borderWidth: 3
             }]

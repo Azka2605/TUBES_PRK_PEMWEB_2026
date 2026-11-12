@@ -78,7 +78,7 @@ $query = mysqli_stmt_get_result($stmt);
 
 <style>
     .bobot-filter-input:focus {
-        border-color: #86b7a0;
+        border-color: var(--brand);
         box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
     }
 </style>

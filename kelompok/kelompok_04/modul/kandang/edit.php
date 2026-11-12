@@ -33,7 +33,7 @@ if(isset($_POST['update'])){
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Data Kandang</h5>
             </div>
             <div class="card-body">

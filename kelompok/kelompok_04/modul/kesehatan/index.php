@@ -61,11 +61,11 @@ if (!$query) {
 
 <style>
     .health-filter .nav-link {
-        color: #146c43;
+        color: var(--brand-dark);
     }
 
     .health-filter .nav-link.active {
-        background-color: #198754;
+        background-color: var(--brand);
         color: #fff;
     }
 </style>

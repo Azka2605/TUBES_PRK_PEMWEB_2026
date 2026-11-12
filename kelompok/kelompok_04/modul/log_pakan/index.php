@@ -88,25 +88,25 @@ include '../../views/header.php';
 
 <style>
     .dashboard-page {
-        --dashboard-green-dark: #146c43;
-        --dashboard-green-soft: #eaf5ee;
+        --dashboard-green-dark: var(--brand-dark);
+        --dashboard-green-soft: var(--brand-soft);
     }
 
     .dashboard-page .dashboard-title {
-        color: #234b36;
+        color: var(--bs-body-color);
     }
 
     .dashboard-page .stat-card {
-        border: 1px solid #e4ece6;
+        border: 1px solid var(--bs-border-color);
         border-left: 4px solid var(--stat-color);
         border-radius: 0.85rem;
         background: #fff;
-        color: #234b36;
-        box-shadow: 0 0.25rem 0.85rem rgba(35, 75, 54, 0.07);
+        color: var(--bs-body-color);
+        box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.075);
     }
 
     .dashboard-page .stat-card .card-title {
-        color: #6c7d72;
+        color: var(--bs-secondary-color);
         font-size: 0.85rem;
         font-weight: 600;
     }
@@ -127,10 +127,10 @@ include '../../views/header.php';
         font-size: 1.35rem;
     }
 
-    .dashboard-page .stat-primary { --stat-color: #27865a; --stat-soft: #eaf5ee; }
-    .dashboard-page .stat-danger { --stat-color: #bd5b5b; --stat-soft: #f9eded; }
-    .dashboard-page .stat-warning { --stat-color: #a77a22; --stat-soft: #fbf4e3; }
-    .dashboard-page .stat-info { --stat-color: #4a8173; --stat-soft: #eaf3f1; }
+    .dashboard-page .stat-primary { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
+    .dashboard-page .stat-danger { --stat-color: #dc3545; --stat-soft: #f8d7da; }
+    .dashboard-page .stat-warning { --stat-color: #ffc107; --stat-soft: #fff3cd; }
+    .dashboard-page .stat-info { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
 </style>
 
 <div class="container-fluid my-3 dashboard-page">
