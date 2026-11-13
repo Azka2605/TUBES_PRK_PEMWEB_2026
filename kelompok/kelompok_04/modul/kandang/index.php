@@ -21,7 +21,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY id_kandang DESC"
                         <th>Kapasitas</th>
                         <th>Lokasi</th>
                         <th>Keterangan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,9 +36,11 @@ $query = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY id_kandang DESC"
                         <td><?= $row['kapasitas']; ?> ekor</td>
                         <td><?= htmlspecialchars($row['lokasi']); ?></td>
                         <td><?= htmlspecialchars($row['keterangan']); ?></td>
-                        <td class="text-center">
-                            <a href="edit.php?id=<?= $row['id_kandang']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                            <a href="hapus.php?id=<?= $row['id_kandang']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus kandang ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="edit.php?id=<?= $row['id_kandang']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                <a href="hapus.php?id=<?= $row['id_kandang']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus kandang ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                            </div>
                         </td>
                     </tr>
                     <?php 

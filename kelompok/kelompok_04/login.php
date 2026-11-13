@@ -170,13 +170,14 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= $base_url; ?>/assets/css/theme.css?v=1">
 
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
     <style>
         body {
-            background: linear-gradient(135deg, #e8f5e9, #f8f9fa);
+            background: var(--bs-light);
             min-height: 100vh;
         }
 
@@ -184,21 +185,20 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
             width: 100%;
             max-width: 420px;
             border: none;
-            border-radius: 15px;
+            border-radius: var(--bs-border-radius);
         }
 
         .login-icon {
-            font-size: 50px;
-            color: #198754;
+            color: var(--brand);
         }
 
         .btn-login {
-            background-color: #198754;
+            background-color: var(--brand);
             border: none;
         }
 
         .btn-login:hover {
-            background-color: #146c43;
+            background-color: var(--brand-dark);
         }
     </style>
 </head>
@@ -207,7 +207,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
 <div class="container d-flex justify-content-center align-items-center min-vh-100">
 
-    <div class="card login-card shadow-lg p-4">
+    <div class="card login-card shadow-sm p-4">
 
         <!-- JUDUL LOGIN -->
         <div class="text-center mb-4">
