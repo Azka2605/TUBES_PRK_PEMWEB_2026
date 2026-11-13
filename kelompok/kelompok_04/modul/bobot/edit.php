@@ -87,7 +87,7 @@ if (isset($_POST['update'])) {
 
                     <div class="d-flex justify-content-between mt-4">
                         <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
-                        <button type="submit" name="update" class="btn btn-warning"><i class="bi bi-save me-1"></i>Perbarui Penimbangan</button>
+                        <button type="submit" name="update" class="btn btn-success"><i class="bi bi-save me-1"></i>Perbarui Penimbangan</button>
                     </div>
                 </form>
             </div>

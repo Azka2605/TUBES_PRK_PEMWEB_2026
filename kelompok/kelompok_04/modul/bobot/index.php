@@ -136,7 +136,7 @@ $query = mysqli_stmt_get_result($stmt);
                         <th>Jenis / Ras</th>
                         <th>Bobot (kg)</th>
                         <th>Catatan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -152,9 +152,11 @@ $query = mysqli_stmt_get_result($stmt);
                         <td><?= htmlspecialchars($row['jenis_ras']); ?></td>
                         <td><?= number_format((float)$row['bobot_kg'], 2, ',', '.'); ?></td>
                         <td><?= htmlspecialchars($row['catatan'] ?? '-'); ?></td>
-                        <td class="text-center">
-                            <a href="edit.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                            <a href="hapus.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data penimbangan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="edit.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                <a href="hapus.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus data penimbangan ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                            </div>
                         </td>
                     </tr>
                     <?php

@@ -61,7 +61,7 @@ $kandang_list = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY nama_kand
                         <th>Kandang</th>
                         <th>Kelamin</th>
                         <th>Status Kesehatan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,9 +69,9 @@ $kandang_list = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY nama_kand
                     $no = 1;
                     if (mysqli_num_rows($query) > 0):
                         while ($row = mysqli_fetch_assoc($query)): 
-                            $badge_status = 'bg-success';
-                            if ($row['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger';
-                            if ($row['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text-dark';
+                            $badge_status = 'bg-success-subtle text-success-emphasis border-success-subtle';
+                            if ($row['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger-subtle text-danger-emphasis border-danger-subtle';
+                            if ($row['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
                     ?>
                     <tr>
                         <td><?= $no++; ?></td>
@@ -86,11 +86,13 @@ $kandang_list = mysqli_query($koneksi, "SELECT * FROM kandang ORDER BY nama_kand
                         <td><?= htmlspecialchars($row['jenis_ras']); ?></td>
                         <td><?= htmlspecialchars($row['nama_kandang'] ?? 'Belum Diatur'); ?></td>
                         <td><?= $row['jenis_kelamin'] == 'Jantan' ? '♂ Jantan' : '♀ Betina'; ?></td>
-                        <td><span class="badge <?= $badge_status; ?>"><?= $row['status_kesehatan']; ?></span></td>
-                        <td class="text-center">
-                            <a href="<?= $base_url; ?>/modul/kesehatan/riwayat.php?id_ternak=<?= (int)$row['id_ternak']; ?>" class="btn btn-info btn-sm me-1"><i class="bi bi-eye"></i> Detail</a>
-                            <a href="edit.php?id=<?= $row['id_ternak']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                            <a href="hapus.php?id=<?= $row['id_ternak']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus ternak ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                        <td><span class="badge health-status-badge <?= $badge_status; ?>"><?= $row['status_kesehatan']; ?></span></td>
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="<?= $base_url; ?>/modul/kesehatan/riwayat.php?id_ternak=<?= (int)$row['id_ternak']; ?>" class="btn btn-outline-secondary btn-sm" title="Detail"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                                <a href="edit.php?id=<?= $row['id_ternak']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                <a href="hapus.php?id=<?= $row['id_ternak']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus ternak ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                            </div>
                         </td>
                     </tr>
                     <?php 

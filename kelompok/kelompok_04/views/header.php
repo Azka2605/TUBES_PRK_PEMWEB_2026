@@ -63,7 +63,7 @@ $bagian_pakan_aktif = strpos($current_uri, '/modul/pakan/') !== false || strpos(
 
         .app-sidebar {
             --bs-offcanvas-width: 17rem;
-            background: #146c43;
+            background: var(--brand-dark);
         }
 
         .app-sidebar .offcanvas-body {
@@ -96,7 +96,6 @@ $bagian_pakan_aktif = strpos($current_uri, '/modul/pakan/') !== false || strpos(
         .app-sidebar .nav-section-toggle::after {
             font-family: "bootstrap-icons";
             content: "\f282";
-            font-size: 0.75rem;
             transition: transform 0.2s ease;
         }
 
@@ -110,7 +109,6 @@ $bagian_pakan_aktif = strpos($current_uri, '/modul/pakan/') !== false || strpos(
 
         .app-sidebar .nav-section-label {
             color: rgba(255, 255, 255, 0.82);
-            font-size: 1rem;
             font-weight: 400;
             letter-spacing: normal;
             margin: 0.35rem 0 0;
@@ -138,7 +136,7 @@ $bagian_pakan_aktif = strpos($current_uri, '/modul/pakan/') !== false || strpos(
                 top: 0;
                 transform: none !important;
                 visibility: visible !important;
-                background-color: #146c43 !important;
+                background-color: var(--brand-dark) !important;
             }
         }
     </style>

@@ -185,11 +185,10 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
             width: 100%;
             max-width: 420px;
             border: none;
-            border-radius: 15px;
+            border-radius: var(--bs-border-radius);
         }
 
         .login-icon {
-            font-size: 50px;
             color: var(--brand);
         }
 
@@ -208,7 +207,7 @@ if (isset($_GET['logout']) && $_GET['logout'] === 'success') {
 
 <div class="container d-flex justify-content-center align-items-center min-vh-100">
 
-    <div class="card login-card shadow-lg p-4">
+    <div class="card login-card shadow-sm p-4">
 
         <!-- JUDUL LOGIN -->
         <div class="text-center mb-4">

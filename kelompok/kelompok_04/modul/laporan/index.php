@@ -121,21 +121,20 @@ date_default_timezone_set($zona_waktu_sebelumnya);
 .report-page .summary-card {
     border: 1px solid var(--bs-border-color);
     border-left: 4px solid var(--summary-color);
-    border-radius: 0.85rem;
+    border-radius: var(--bs-border-radius);
     background: #fff;
     color: var(--bs-body-color);
-    box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.075);
+    box-shadow: var(--bs-box-shadow-sm);
 }
 
 .report-page .summary-label {
     color: var(--bs-secondary-color);
-    font-size: 0.85rem;
     font-weight: 600;
 }
 
 .report-page .summary-value {
     color: var(--summary-color);
-    font-weight: 700;
+    font-weight: var(--font-weight-title);
 }
 
 .report-page .summary-icon {
@@ -144,20 +143,19 @@ date_default_timezone_set($zona_waktu_sebelumnya);
     height: 3rem;
     flex: 0 0 3rem;
     place-items: center;
-    border-radius: 0.75rem;
+    border-radius: var(--bs-border-radius);
     background: var(--summary-soft);
     color: var(--summary-color);
-    font-size: 1.35rem;
 }
 
 .report-page .summary-primary { --summary-color: var(--brand); --summary-soft: var(--brand-soft); }
 .report-page .summary-info { --summary-color: var(--brand); --summary-soft: var(--brand-soft); }
-.report-page .summary-warning { --summary-color: #ffc107; --summary-soft: #fff3cd; }
+.report-page .summary-warning { --summary-color: var(--brand); --summary-soft: var(--brand-soft); }
 
 .report-page .report-table-card {
     border: 1px solid var(--bs-border-color);
-    border-radius: 0.85rem;
-    box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.075);
+    border-radius: var(--bs-border-radius);
+    box-shadow: var(--bs-box-shadow-sm);
 }
 
 .report-page .report-table-card .table {
@@ -184,7 +182,6 @@ date_default_timezone_set($zona_waktu_sebelumnya);
     body {
         background: #fff !important;
         color: #000 !important;
-        font-size: 11px !important;
         width: 100% !important;
     }
 
@@ -289,7 +286,6 @@ date_default_timezone_set($zona_waktu_sebelumnya);
     .report-page table {
         border-collapse: collapse !important;
         width: 100% !important;
-        font-size: 11px !important;
         table-layout: auto;
     }
 
@@ -319,7 +315,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
 
     .report-page thead th {
         background: #e5e5e5 !important;
-        font-weight: 700;
+        font-weight: 600;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
@@ -404,7 +400,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
                 <div class="card-body d-flex justify-content-between align-items-center gap-2">
                     <div>
                         <div class="summary-label">Pemeriksaan pada Periode</div>
-                        <div class="summary-value fs-4"><?= $jumlah_medis ?></div>
+                        <div class="summary-value"><?= $jumlah_medis ?></div>
                     </div>
                     <span class="summary-icon"><i class="bi bi-heart-pulse" aria-hidden="true"></i></span>
                 </div>
@@ -416,7 +412,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
                 <div class="card-body d-flex justify-content-between align-items-center gap-2">
                     <div>
                         <div class="summary-label">Total Penggunaan Pakan</div>
-                        <div class="summary-value fs-4"><?= number_format($total_pakan, 2, ',', '.') ?> kg</div>
+                        <div class="summary-value"><?= number_format($total_pakan, 2, ',', '.') ?> kg</div>
                     </div>
                     <span class="summary-icon"><i class="bi bi-basket" aria-hidden="true"></i></span>
                 </div>
@@ -441,7 +437,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
                 <tbody>
                 <?php if ($jumlah_medis === 0): ?>
                     <tr><td colspan="7" class="text-center py-5">
-                        <i class="bi bi-inbox display-6 text-muted d-block mb-2" aria-hidden="true"></i>
+                        <i class="bi bi-inbox text-muted d-block mb-2" aria-hidden="true"></i>
                         <span class="text-muted">Belum ada data rekam medis pada periode ini.</span>
                     </td></tr>
                 <?php endif; ?>
@@ -527,7 +523,7 @@ date_default_timezone_set($zona_waktu_sebelumnya);
                 <tbody>
                 <?php if ($jumlah_log_pakan === 0): ?>
                     <tr><td colspan="5" class="text-center py-5">
-                        <i class="bi bi-inbox display-6 text-muted d-block mb-2" aria-hidden="true"></i>
+                        <i class="bi bi-inbox text-muted d-block mb-2" aria-hidden="true"></i>
                         <span class="text-muted">Belum ada penggunaan pakan pada periode ini.</span>
                     </td></tr>
                 <?php endif; ?>

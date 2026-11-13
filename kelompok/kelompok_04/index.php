@@ -2,6 +2,9 @@
 include 'config/koneksi.php';
 include 'views/header.php';
 
+$batas_sedikit = 10;
+$batas_banyak = 50;
+
 // Statistik dashboard
 $total_ternak  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak"))['jml'];
 $ternak_sakit  = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT COUNT(*) AS jml FROM ternak WHERE status_kesehatan = 'Sakit'"))['jml'];
@@ -39,6 +42,14 @@ if ($filter_stok_pakan === 'semua') {
 $ringkasan_stok = mysqli_fetch_assoc($ringkasan_stok);
 $total_stok_pakan = (float) $ringkasan_stok['total'];
 $jumlah_stok_menipis = (int) $ringkasan_stok['menipis'];
+$level_stok_pakan = $total_stok_pakan < $batas_sedikit
+    ? 'Sedikit'
+    : ($total_stok_pakan <= $batas_banyak ? 'Sedang' : 'Banyak');
+$kelas_level_stok = [
+    'Sedikit' => 'text-bg-warning',
+    'Sedang' => 'text-bg-secondary',
+    'Banyak' => 'text-bg-success'
+][$level_stok_pakan];
 $opsi_filter_stok = ['semua' => 'Semua kategori'];
 foreach ($kategori_pakan as $kategori) {
     $opsi_filter_stok[$kategori] = $kategori;
@@ -156,7 +167,7 @@ $sql_pakan_per_jenis = "SELECT p.id_pakan, p.nama_pakan, p.peruntukan,
                             ON lp.id_pakan = p.id_pakan
                             AND lp.tgl_pemberian >= ? AND lp.tgl_pemberian < ?
                         GROUP BY p.id_pakan, p.nama_pakan, p.peruntukan
-                        ORDER BY p.nama_pakan";
+                        ORDER BY total_kg DESC, p.nama_pakan";
 $stmt_pakan_per_jenis = mysqli_prepare($koneksi, $sql_pakan_per_jenis);
 mysqli_stmt_bind_param($stmt_pakan_per_jenis, 'ss', $awal_pakan_sql, $akhir_pakan_sql);
 mysqli_stmt_execute($stmt_pakan_per_jenis);
@@ -183,14 +194,6 @@ while ($pemakaian = mysqli_fetch_assoc($penggunaan_per_jenis)) {
     $pengguna_pakan_per_item[] = $pengguna;
 }
 $total_pakan_periode = array_sum($data_pakan_per_jenis);
-$palet_warna_pakan = [
-    '#198754', '#146c43', '#157347', '#2f9368', '#479f76',
-    '#0f5132', '#5aab84', '#267a55', '#3d8b63'
-];
-$warna_pakan_per_item = [];
-foreach ($label_pakan_per_jenis as $indeks => $label) {
-    $warna_pakan_per_item[] = $palet_warna_pakan[$indeks % count($palet_warna_pakan)];
-}
 ?>
 
 <style>
@@ -206,8 +209,8 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
     .dashboard-page .stat-card,
     .dashboard-page .dashboard-panel {
         border: 1px solid var(--bs-border-color);
-        border-radius: 0.85rem;
-        box-shadow: 0 0.25rem 0.85rem rgba(0, 0, 0, 0.075);
+        border-radius: var(--bs-border-radius);
+        box-shadow: var(--bs-box-shadow-sm);
     }
 
     .dashboard-page .stat-card {
@@ -218,13 +221,15 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
 
     .dashboard-page .stat-card .card-title {
         color: var(--bs-secondary-color);
-        font-size: 0.85rem;
-        font-weight: 600;
     }
 
     .dashboard-page .stat-card h2 {
-        color: var(--stat-color);
-        font-weight: 700;
+        color: var(--brand-dark);
+        white-space: nowrap;
+    }
+
+    .dashboard-page .stat-card-content {
+        min-width: 0;
     }
 
     .dashboard-page .stat-icon {
@@ -232,20 +237,19 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
         width: 3rem;
         height: 3rem;
         place-items: center;
-        border-radius: 0.75rem;
+        border-radius: var(--bs-border-radius);
         background: var(--stat-soft);
         color: var(--stat-color);
-        font-size: 1.35rem;
     }
 
     .dashboard-page .stat-primary { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
     .dashboard-page .stat-danger { --stat-color: #dc3545; --stat-soft: #f8d7da; }
     .dashboard-page .stat-warning { --stat-color: #ffc107; --stat-soft: #fff3cd; }
-    .dashboard-page .stat-info { --stat-color: #0dcaf0; --stat-soft: #cff4fc; }
+    .dashboard-page .stat-info { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
 
     .dashboard-page .panel-heading {
         border-bottom: 1px solid var(--bs-border-color);
-        border-radius: 0.85rem 0.85rem 0 0;
+        border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
         background: var(--dashboard-green-soft);
         color: var(--dashboard-green-dark);
     }
@@ -274,32 +278,6 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
         font-family: inherit;
     }
 
-    .dashboard-page .feed-chart-legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem 0.8rem;
-        list-style: none;
-        margin: 0.25rem 0 0.75rem;
-        padding: 0;
-    }
-
-    .dashboard-page .feed-chart-legend li {
-        align-items: center;
-        color: var(--bs-secondary-color);
-        display: inline-flex;
-        font-size: 0.72rem;
-        gap: 0.35rem;
-        line-height: 1.2;
-    }
-
-    .dashboard-page .feed-chart-legend-swatch {
-        border-radius: 0.12rem;
-        display: inline-block;
-        flex: 0 0 0.65rem;
-        height: 0.65rem;
-        width: 0.65rem;
-    }
-
     .dashboard-page .feed-chart-period .form-control:focus,
     .dashboard-page .feed-chart-control:focus {
         border-color: var(--brand);
@@ -316,7 +294,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
     <div class="row g-3">
         <div class="col-md-3">
             <div class="card stat-card stat-primary h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
+                <div class="card-body d-flex justify-content-between align-items-start">
                     <div>
                         <h6 class="card-title">Total Ternak</h6>
                         <h2 class="mb-0"><?= $total_ternak ?></h2>
@@ -327,7 +305,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
         </div>
         <div class="col-md-3">
             <div class="card stat-card stat-danger h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
+                <div class="card-body d-flex justify-content-between align-items-start">
                     <div>
                         <h6 class="card-title">Ternak Sakit</h6>
                         <h2 class="mb-0"><?= $ternak_sakit ?></h2>
@@ -338,7 +316,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
         </div>
         <div class="col-md-3">
             <div class="card stat-card stat-primary h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
+                <div class="card-body d-flex justify-content-between align-items-start">
                     <div>
                         <h6 class="card-title">Jumlah Kandang</h6>
                         <h2 class="mb-0"><?= $total_kandang ?></h2>
@@ -348,11 +326,21 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card stat-warning h-100">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <h6 class="card-title mb-0">Total Stok Pakan</h6>
+            <div class="card stat-card stat-primary h-100">
+                <div class="card-body d-flex justify-content-between align-items-start">
+                    <div class="stat-card-content">
+                        <h6 class="card-title mb-1">Total Stok Pakan</h6>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <h2 class="mb-0"><?= number_format($total_stok_pakan, 2, ',', '.') ?> kg</h2>
+                            <span class="badge <?= $kelas_level_stok ?>"><?= $level_stok_pakan ?></span>
+                        </div>
+                        <div class="stat-card-caption <?= $jumlah_stok_menipis > 0 ? 'text-warning-emphasis' : 'text-muted' ?>">
+                            <?= $jumlah_stok_menipis ?> jenis menipis
+                        </div>
+                        <div class="d-flex align-items-center gap-1 mt-1">
+                            <small class="text-muted text-truncate">
+                                <?= $filter_stok_pakan === 'semua' ? 'Semua kategori' : htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>
+                            </small>
                             <div class="dropdown">
                                 <button class="btn btn-sm btn-outline-success py-0 px-1" type="button"
                                         data-bs-toggle="dropdown" aria-expanded="false"
@@ -379,15 +367,8 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
                                 </ul>
                             </div>
                         </div>
-                        <div>
-                            <h2 class="mb-0"><?= number_format($total_stok_pakan, 2, ',', '.') ?> kg</h2>
-                            <small class="text-muted">
-                                <?= $filter_stok_pakan === 'semua' ? 'Semua kategori' : htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>
-                                · <?= $jumlah_stok_menipis ?> jenis di bawah 10 kg
-                            </small>
-                        </div>
                     </div>
-                    <span class="stat-icon"><i class="bi bi-basket" aria-hidden="true"></i></span>
+                    <span class="stat-icon flex-shrink-0"><i class="bi bi-basket" aria-hidden="true"></i></span>
                 </div>
             </div>
         </div>
@@ -427,17 +408,9 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
                     <h5 class="mb-0">Penggunaan Pakan per Nama Pakan</h5>
                 </div>
                 <div class="card-body">
-                    <canvas id="chartPakanHarian" aria-label="Chart penggunaan untuk setiap nama pakan dan jenis ternak yang menggunakannya pada periode terpilih" role="img"></canvas>
-                    <ul class="feed-chart-legend" aria-label="Keterangan warna jenis pakan">
-                        <?php foreach ($label_pakan_per_jenis as $indeks => $nama_pakan): ?>
-                            <li>
-                                <span class="feed-chart-legend-swatch"
-                                      style="background-color: <?= htmlspecialchars($warna_pakan_per_item[$indeks], ENT_QUOTES, 'UTF-8') ?>"
-                                      aria-hidden="true"></span>
-                                <?= htmlspecialchars($nama_pakan, ENT_QUOTES, 'UTF-8') ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+                    <div style="height: <?= max(220, count($label_pakan_per_jenis) * 34 + 60) ?>px">
+                        <canvas id="chartPakanHarian" aria-label="Chart penggunaan untuk setiap nama pakan dan jenis ternak yang menggunakannya pada periode terpilih" role="img"></canvas>
+                    </div>
                     <form method="get" class="row g-3 align-items-end mt-2 feed-chart-period">
                         <input type="hidden" name="jenis_status" value="<?= htmlspecialchars($filter_status_jenis, ENT_QUOTES, 'UTF-8') ?>">
                         <input type="hidden" name="jenis_stok" value="<?= htmlspecialchars($filter_stok_pakan, ENT_QUOTES, 'UTF-8') ?>">
@@ -636,14 +609,15 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
             datasets: [{
                 label: 'Penggunaan (kg)',
                 data: <?= json_encode($data_pakan_per_jenis, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
-                backgroundColor: <?= json_encode($warna_pakan_per_item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
-                borderColor: <?= json_encode($warna_pakan_per_item, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>,
-                borderWidth: 1,
-                borderRadius: 6
+                backgroundColor: '#198754',
+                borderColor: '#198754',
+                borderWidth: 1
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
+            maintainAspectRatio: false,
             font: {
                 family: getComputedStyle(document.body).fontFamily
             },
@@ -656,12 +630,11 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
             },
             scales: {
                 y: {
-                    beginAtZero: true,
-                    title: { display: true, text: 'Kilogram' }
+                    grid: { display: false }
                 },
                 x: {
-                    ticks: { display: false },
-                    grid: { display: false }
+                    beginAtZero: true,
+                    title: { display: true, text: 'Kilogram' }
                 }
             },
             plugins: {
@@ -669,7 +642,7 @@ foreach ($label_pakan_per_jenis as $indeks => $label) {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return 'Total: ' + Number(context.raw).toLocaleString('id-ID', {
+                            return Number(context.raw).toLocaleString('id-ID', {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2
                             }) + ' kg';

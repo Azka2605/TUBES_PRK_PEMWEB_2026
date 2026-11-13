@@ -22,7 +22,7 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
                         <th>Peruntukan</th>
                         <th>Stok</th>
                         <th>Satuan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,9 +41,11 @@ $query = mysqli_query($koneksi, "SELECT * FROM pakan ORDER BY id_pakan DESC");
                         <td><?= htmlspecialchars($row['peruntukan']); ?></td>
                         <td><span class="badge <?= $badge_stok; ?>"><?= number_format($row['stok_kg'], 2); ?></span></td>
                         <td><?= htmlspecialchars($row['satuan']); ?></td>
-                        <td class="text-center">
-                            <a href="edit.php?id=<?= $row['id_pakan']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                            <a href="hapus.php?id=<?= $row['id_pakan']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus pakan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="edit.php?id=<?= $row['id_pakan']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                <a href="hapus.php?id=<?= $row['id_pakan']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus pakan ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                            </div>
                         </td>
                     </tr>
                     <?php 
