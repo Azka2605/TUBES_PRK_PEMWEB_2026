@@ -66,7 +66,7 @@ if (isset($_POST['update'])) {
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Edit Data Ternak</h5>
             </div>
             <div class="card-body">
@@ -135,7 +135,7 @@ if (isset($_POST['update'])) {
 
                     <div class="d-flex justify-content-between mt-4">
                         <a href="index.php" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Batal</a>
-                        <button type="submit" name="update" class="btn btn-warning"><i class="bi bi-save me-1"></i>Update Data Ternak</button>
+                        <button type="submit" name="update" class="btn btn-success"><i class="bi bi-save me-1"></i>Update Data Ternak</button>
                     </div>
                 </form>
             </div>

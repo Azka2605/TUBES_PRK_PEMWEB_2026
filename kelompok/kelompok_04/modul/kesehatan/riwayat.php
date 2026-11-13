@@ -46,9 +46,9 @@ mysqli_stmt_close($stmt);
 $bobot_terakhir = $riwayat_bobot[0]['bobot_kg'] ?? null;
 $selisih = isset($riwayat_bobot[1]) ? (float)$riwayat_bobot[0]['bobot_kg'] - (float)$riwayat_bobot[1]['bobot_kg'] : null;
 
-$badge_status = 'bg-success';
-if ($ternak['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger';
-if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text-dark';
+$badge_status = 'bg-success-subtle text-success-emphasis border-success-subtle';
+if ($ternak['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger-subtle text-danger-emphasis border-danger-subtle';
+if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -74,7 +74,7 @@ if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">Kelamin</small><?= $ternak['jenis_kelamin'] == 'Jantan' ? '♂ Jantan' : '♀ Betina'; ?></div>
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">Kandang</small><?= htmlspecialchars($ternak['nama_kandang'] ?? 'Belum Diatur'); ?></div>
                     <div class="col-md-3 mb-2"><small class="text-muted d-block">Tanggal Lahir</small><?= htmlspecialchars($ternak['tgl_lahir'] ?? '-'); ?></div>
-                    <div class="col-md-3 mb-2"><small class="text-muted d-block">Status Kesehatan</small><span class="badge <?= $badge_status; ?>"><?= htmlspecialchars($ternak['status_kesehatan']); ?></span></div>
+                    <div class="col-md-3 mb-2"><small class="text-muted d-block">Status Kesehatan</small><span class="badge health-status-badge <?= $badge_status; ?>"><?= htmlspecialchars($ternak['status_kesehatan']); ?></span></div>
                     <div class="col-md-3 mb-2">
                         <small class="text-muted d-block">Bobot Terakhir</small>
                         <?php if ($bobot_terakhir !== null): ?>
@@ -111,7 +111,7 @@ if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text
                         <th>Diagnosa</th>
                         <th>Tindakan Medis</th>
                         <th>Obat / Vaksin</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -124,9 +124,11 @@ if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text
                             <td><?= htmlspecialchars($row['diagnosa']); ?></td>
                             <td><?= htmlspecialchars($row['tindakan_medis'] ?? '-'); ?></td>
                             <td><?= htmlspecialchars($row['obat_vaksin'] ?? '-'); ?></td>
-                            <td class="text-center">
-                                <a href="edit.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                                <a href="hapus.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus rekam medis ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                            <td class="text-center text-nowrap">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <a href="edit.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                    <a href="hapus.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus rekam medis ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -156,7 +158,7 @@ if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text
                         <th>Tanggal Timbang</th>
                         <th>Bobot (kg)</th>
                         <th>Catatan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -167,9 +169,11 @@ if ($ternak['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text
                             <td><?= htmlspecialchars($row['tgl_timbang']); ?></td>
                             <td><?= number_format((float)$row['bobot_kg'], 2, ',', '.'); ?></td>
                             <td><?= htmlspecialchars($row['catatan'] ?? '-'); ?></td>
-                            <td class="text-center">
-                                <a href="../bobot/edit.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                                <a href="../bobot/hapus.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus data penimbangan ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                            <td class="text-center text-nowrap">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <a href="../bobot/edit.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-outline-success btn-sm" title="Edit"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                                    <a href="../bobot/hapus.php?id=<?= (int)$row['id_bobot']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus data penimbangan ini?')"><i class="bi bi-trash" aria-hidden="true"></i></a>
+                                </div>
                             </td>
                         </tr>
                         <?php endforeach; ?>

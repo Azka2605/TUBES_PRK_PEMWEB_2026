@@ -63,7 +63,7 @@ $query = mysqli_query($koneksi, $query_str);
                         <th>Nama Lengkap</th>
                         <th>Role</th>
                         <th>Tanggal Dibuat</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -72,9 +72,6 @@ $query = mysqli_query($koneksi, $query_str);
                     if (mysqli_num_rows($query) > 0):
                         while ($row = mysqli_fetch_assoc($query)): 
                             $badge_role = 'bg-secondary';
-                            if ($row['role'] === 'admin') $badge_role = 'bg-danger';
-                            if ($row['role'] === 'peternak') $badge_role = 'bg-success';
-                            if ($row['role'] === 'dokter') $badge_role = 'bg-info text-dark';
                     ?>
                     <tr>
                         <td><?= $no++; ?></td>
@@ -82,13 +79,15 @@ $query = mysqli_query($koneksi, $query_str);
                         <td><?= htmlspecialchars($row['nama_lengkap']); ?></td>
                         <td><span class="badge <?= $badge_role; ?>"><?= ucfirst(htmlspecialchars($row['role'])); ?></span></td>
                         <td><?= !empty($row['created_at']) ? date('d M Y, H:i', strtotime($row['created_at'])) : '-'; ?></td>
-                        <td class="text-center">
-                            <a href="edit.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-warning btn-sm me-1">
-                                <i class="bi bi-pencil-square"></i> Edit
-                            </a>
-                            <a href="hapus.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus user ini?')">
-                                <i class="bi bi-trash"></i> Hapus
-                            </a>
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="edit.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-outline-success btn-sm" title="Edit">
+                                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                </a>
+                                <a href="hapus.php?id=<?= (int)$row['id_user']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" onclick="return confirm('Yakin ingin menghapus user ini?')">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     <?php 

@@ -60,12 +60,48 @@ if (!$query) {
 <?php endif; ?>
 
 <style>
+    .health-table th,
+    .health-table td {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom-width: 1px;
+    }
+
+    .health-table thead th,
+    .health-cell-nowrap {
+        white-space: nowrap;
+    }
+
+    .health-cell-diagnosis {
+        min-width: 12rem;
+        max-width: 16rem;
+    }
+
+    .health-cell-treatment,
+    .health-cell-medicine {
+        min-width: 10rem;
+        max-width: 14rem;
+    }
+
+    .health-text-clamp {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        overflow-wrap: anywhere;
+    }
+
+    .health-cell-actions {
+        white-space: nowrap;
+    }
+
     .health-filter .nav-link {
-        color: #146c43;
+        color: var(--brand-dark);
     }
 
     .health-filter .nav-link.active {
-        background-color: #198754;
+        background-color: var(--brand);
         color: #fff;
     }
 </style>
@@ -91,7 +127,7 @@ if (!$query) {
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover table-striped align-middle mb-0">
+            <table class="table table-hover table-striped align-middle mb-0 health-table">
                 <thead class="table-success">
                     <tr>
                         <th>No</th>
@@ -103,7 +139,7 @@ if (!$query) {
                         <th>Tindakan Medis</th>
                         <th>Obat / Vaksin</th>
                         <th>Status Kesehatan</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,23 +147,43 @@ if (!$query) {
                     $no = 1;
                     if (mysqli_num_rows($query) > 0):
                         while ($row = mysqli_fetch_assoc($query)):
-                            $badge_status = 'bg-success';
-                            if ($row['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger';
-                            if ($row['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning text-dark';
+                            $badge_status = 'bg-success-subtle text-success-emphasis border-success-subtle';
+                            if ($row['status_kesehatan'] == 'Sakit') $badge_status = 'bg-danger-subtle text-danger-emphasis border-danger-subtle';
+                            if ($row['status_kesehatan'] == 'Karantina') $badge_status = 'bg-warning-subtle text-warning-emphasis border-warning-subtle';
                     ?>
                     <tr>
                         <td><?= $no++; ?></td>
-                        <td><?= htmlspecialchars($row['tgl_periksa']); ?></td>
-                        <td><strong><?= htmlspecialchars($row['tag_number']); ?></strong></td>
+                        <td class="health-cell-nowrap"><?= date('d/m/Y', strtotime($row['tgl_periksa'])); ?></td>
+                        <td class="health-cell-nowrap"><strong><?= htmlspecialchars($row['tag_number']); ?></strong></td>
                         <td><?= htmlspecialchars($row['jenis_ras']); ?></td>
-                        <td><?= htmlspecialchars($row['nama_dokter'] ?? 'Tidak diketahui'); ?></td>
-                        <td><?= htmlspecialchars($row['diagnosa']); ?></td>
-                        <td><?= htmlspecialchars($row['tindakan_medis'] ?? '-'); ?></td>
-                        <td><?= htmlspecialchars($row['obat_vaksin'] ?? '-'); ?></td>
-                        <td><span class="badge <?= $badge_status; ?>"><?= htmlspecialchars($row['status_kesehatan']); ?></span></td>
-                        <td class="text-center">
-                            <a href="edit.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-warning btn-sm me-1"><i class="bi bi-pencil-square"></i> Edit</a>
-                            <a href="hapus.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Yakin ingin menghapus rekam medis ini?')"><i class="bi bi-trash"></i> Hapus</a>
+                        <td class="health-cell-nowrap"><?= htmlspecialchars($row['nama_dokter'] ?? 'Tidak diketahui'); ?></td>
+                        <td class="health-cell-diagnosis">
+                            <span class="health-text-clamp" title="<?= htmlspecialchars($row['diagnosa'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?= htmlspecialchars($row['diagnosa']); ?>
+                            </span>
+                        </td>
+                        <td class="health-cell-treatment">
+                            <?php $tindakan = $row['tindakan_medis'] ?? '-'; ?>
+                            <span class="health-text-clamp" title="<?= htmlspecialchars($tindakan, ENT_QUOTES, 'UTF-8'); ?>">
+                                <?= htmlspecialchars($tindakan); ?>
+                            </span>
+                        </td>
+                        <td class="health-cell-medicine">
+                            <?php $obat_vaksin = $row['obat_vaksin'] ?? '-'; ?>
+                            <span class="health-text-clamp" title="<?= htmlspecialchars($obat_vaksin, ENT_QUOTES, 'UTF-8'); ?>">
+                                <?= htmlspecialchars($obat_vaksin); ?>
+                            </span>
+                        </td>
+                        <td class="health-cell-nowrap"><span class="badge health-status-badge <?= $badge_status; ?>"><?= htmlspecialchars($row['status_kesehatan']); ?></span></td>
+                        <td class="text-center health-cell-actions">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a href="edit.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-outline-success btn-sm" title="Edit" aria-label="Edit">
+                                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                </a>
+                                <a href="hapus.php?id=<?= (int)$row['id_kesehatan']; ?>" class="btn btn-outline-danger btn-sm" title="Hapus" aria-label="Hapus" onclick="return confirm('Yakin ingin menghapus rekam medis ini?')">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     <?php

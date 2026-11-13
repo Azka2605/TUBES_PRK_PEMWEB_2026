@@ -55,6 +55,13 @@ try {
     error_log('Gagal memuat log pemberian pakan: ' . $e->getMessage());
 }
 
+$filter_pakan_tersering = '';
+if ($filter_log !== 'semua') {
+    $filter_pakan_tersering = "WHERE EXISTS (
+             SELECT 1 FROM ternak t
+             WHERE t.id_kandang = lp.id_kandang AND t.jenis_ras LIKE ?
+         )";
+}
 $query_ringkasan = "SELECT
         COALESCE((SELECT SUM(jumlah_kg)
                   FROM log_pemberian_pakan
@@ -66,14 +73,26 @@ $query_ringkasan = "SELECT
         (SELECT p.nama_pakan
          FROM log_pemberian_pakan lp
          JOIN pakan p ON p.id_pakan = lp.id_pakan
+         $filter_pakan_tersering
          GROUP BY p.id_pakan, p.nama_pakan
          ORDER BY COUNT(*) DESC, p.nama_pakan ASC
          LIMIT 1) AS pakan_tersering";
 $ringkasan = false;
 try {
-    $hasil_ringkasan = mysqli_query($koneksi, $query_ringkasan);
-    if (!$hasil_ringkasan) {
+    $stmt_ringkasan = mysqli_prepare($koneksi, $query_ringkasan);
+    if (!$stmt_ringkasan) {
         throw new RuntimeException(mysqli_error($koneksi));
+    }
+    if ($filter_log !== 'semua') {
+        $jenis_ternak_ringkasan = $jenis_ternak_valid[$filter_log];
+        mysqli_stmt_bind_param($stmt_ringkasan, 's', $jenis_ternak_ringkasan);
+    }
+    if (!mysqli_stmt_execute($stmt_ringkasan)) {
+        throw new RuntimeException(mysqli_stmt_error($stmt_ringkasan));
+    }
+    $hasil_ringkasan = mysqli_stmt_get_result($stmt_ringkasan);
+    if (!$hasil_ringkasan) {
+        throw new RuntimeException(mysqli_stmt_error($stmt_ringkasan));
     }
     $ringkasan = mysqli_fetch_assoc($hasil_ringkasan);
 } catch (Throwable $e) {
@@ -88,32 +107,29 @@ include '../../views/header.php';
 
 <style>
     .dashboard-page {
-        --dashboard-green-dark: #146c43;
-        --dashboard-green-soft: #eaf5ee;
+        --dashboard-green-dark: var(--brand-dark);
+        --dashboard-green-soft: var(--brand-soft);
     }
 
     .dashboard-page .dashboard-title {
-        color: #234b36;
+        color: var(--bs-body-color);
     }
 
     .dashboard-page .stat-card {
-        border: 1px solid #e4ece6;
+        border: 1px solid var(--bs-border-color);
         border-left: 4px solid var(--stat-color);
-        border-radius: 0.85rem;
+        border-radius: var(--bs-border-radius);
         background: #fff;
-        color: #234b36;
-        box-shadow: 0 0.25rem 0.85rem rgba(35, 75, 54, 0.07);
+        color: var(--bs-body-color);
+        box-shadow: var(--bs-box-shadow-sm);
     }
 
     .dashboard-page .stat-card .card-title {
-        color: #6c7d72;
-        font-size: 0.85rem;
-        font-weight: 600;
+        color: var(--bs-secondary-color);
     }
 
     .dashboard-page .stat-card h2 {
         color: var(--stat-color);
-        font-weight: 700;
     }
 
     .dashboard-page .stat-icon {
@@ -121,16 +137,15 @@ include '../../views/header.php';
         width: 3rem;
         height: 3rem;
         place-items: center;
-        border-radius: 0.75rem;
+        border-radius: var(--bs-border-radius);
         background: var(--stat-soft);
         color: var(--stat-color);
-        font-size: 1.35rem;
     }
 
-    .dashboard-page .stat-primary { --stat-color: #27865a; --stat-soft: #eaf5ee; }
-    .dashboard-page .stat-danger { --stat-color: #bd5b5b; --stat-soft: #f9eded; }
-    .dashboard-page .stat-warning { --stat-color: #a77a22; --stat-soft: #fbf4e3; }
-    .dashboard-page .stat-info { --stat-color: #4a8173; --stat-soft: #eaf3f1; }
+    .dashboard-page .stat-primary { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
+    .dashboard-page .stat-danger { --stat-color: #dc3545; --stat-soft: #f8d7da; }
+    .dashboard-page .stat-warning { --stat-color: #ffc107; --stat-soft: #fff3cd; }
+    .dashboard-page .stat-info { --stat-color: var(--brand); --stat-soft: var(--brand-soft); }
 </style>
 
 <div class="container-fluid my-3 dashboard-page">
@@ -156,7 +171,7 @@ include '../../views/header.php';
             </div>
         </div>
         <div class="col-12 col-md-4">
-            <div class="card stat-card stat-info h-100">
+            <div class="card stat-card stat-primary h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">Log Hari Ini</h6>
@@ -169,11 +184,11 @@ include '../../views/header.php';
             </div>
         </div>
         <div class="col-12 col-md-4">
-            <div class="card stat-card stat-warning h-100">
+            <div class="card stat-card stat-primary h-100">
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title">Pakan Paling Sering</h6>
-                        <h2 class="mb-0 fs-5 text-break">
+                        <h2 class="mb-0 text-break">
                             <?= $ringkasan && $ringkasan['pakan_tersering'] !== null
                                 ? htmlspecialchars($ringkasan['pakan_tersering'])
                                 : '-' ?>
@@ -233,14 +248,14 @@ include '../../views/header.php';
                         <th>Pakan</th>
                         <th class="text-end">Jumlah (kg)</th>
                         <th>Petugas</th>
-                        <th class="text-center">Aksi</th>
+                        <th class="text-center text-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                 <?php if (mysqli_num_rows($result) === 0): ?>
                     <tr>
                         <td colspan="7" class="text-center py-5">
-                            <i class="bi bi-inbox display-6 text-muted d-block mb-2" aria-hidden="true"></i>
+                            <i class="bi bi-inbox text-muted d-block mb-2" aria-hidden="true"></i>
                             <p class="text-muted mb-3">Belum ada catatan pemberian pakan untuk <?= htmlspecialchars($label_filter_log[$filter_log]) ?>.</p>
                             <a href="tambah.php" class="btn btn-success btn-sm">
                                 <i class="bi bi-plus-circle me-1"></i>Buat catatan pertama
@@ -259,15 +274,17 @@ include '../../views/header.php';
                         </td>
                         <td class="text-end text-nowrap"><?= number_format($row['jumlah_kg'], 2, ',', '.') ?></td>
                         <td><?= htmlspecialchars($row['petugas'] ?? '-') ?></td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
+                            <div class="d-flex gap-1 justify-content-center">
                             <form method="post" action="hapus.php" class="d-inline"
                                   onsubmit="return confirm('Hapus log ini? Stok pakan akan dikembalikan.')">
                                 <input type="hidden" name="id" value="<?= (int)$row['id_log_pakan'] ?>">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'], ENT_QUOTES, 'UTF-8') ?>">
-                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Hapus log">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus" aria-label="Hapus log">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
+                            </div>
                         </td>
                     </tr>
                 <?php endwhile; ?>
